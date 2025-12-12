@@ -1,6 +1,6 @@
 'use client';
 
-import { Code2, Sparkles, Bug, FileCode, Zap, RefreshCw } from 'lucide-react';
+import { Code2, Sparkles, Bug, FileCode, Zap, RefreshCw, Eye, Beaker } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onSuggestionClick: (text: string) => void;
@@ -8,104 +8,89 @@ interface WelcomeScreenProps {
 
 const suggestions = [
   {
-    icon: Code2,
-    title: 'Create a new feature',
-    prompt: 'Add a user authentication system with login and signup'
+    title: "Create a new feature",
+    desc: "Add a user authentication system with login and signup",
+    icon: Code2
   },
   {
-    icon: Bug,
-    title: 'Fix a bug',
-    prompt: 'Debug why my form validation is not working correctly'
+    title: "Fix a bug",
+    desc: "Debug why my form validation is not working correctly",
+    icon: Bug
   },
   {
-    icon: FileCode,
-    title: 'Refactor code',
-    prompt: 'Refactor this component to use TypeScript and improve performance'
+    title: "Refactor code",
+    desc: "Refactor this component to use TypeScript and improve performance",
+    icon: RefreshCw
   },
   {
-    icon: Zap,
-    title: 'Optimize performance',
-    prompt: 'Analyze and optimize the loading time of my application'
+    title: "Optimize performance",
+    desc: "Analyze and optimize the loading time of my application",
+    icon: Zap
   },
   {
-    icon: RefreshCw,
-    title: 'Generate tests',
-    prompt: 'Write comprehensive unit tests for my API endpoints'
+    title: "Generate tests",
+    desc: "Write comprehensive unit tests for my API endpoints",
+    icon: Beaker
   },
   {
-    icon: Sparkles,
-    title: 'Review my code',
-    prompt: 'Review my recent changes and suggest improvements'
+    title: "Review my code",
+    desc: "Review my recent changes and suggest improvements",
+    icon: Eye
   }
 ];
 
 export default function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-full px-4 py-16">
-      <div className="max-w-3xl w-full">
-        {/* Logo and Title */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-claude-orange-light rounded-2xl mb-6">
-            <Code2 size={40} className="text-claude-orange" />
+    <div className="flex flex-col items-center min-h-full px-4 pt-16 sm:pt-24 pb-12 font-sans-claude">
+      <div className="max-w-3xl w-full flex flex-col items-center">
+        
+        {/* Greeting */}
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="w-16 h-16 bg-[#DA7756]/10 rounded-2xl flex items-center justify-center mx-auto mb-6 text-[#DA7756]">
+             <Code2 className="w-8 h-8" />
           </div>
-          <h1 className="text-4xl font-semibold text-claude-text dark:text-claude-text-dark mb-3">
+          <h1 className="font-serif-claude text-4xl sm:text-5xl font-medium mb-4 text-[#1F1F1F] tracking-tight">
             Welcome to Claude Coder
           </h1>
-          <p className="text-lg text-claude-text-muted dark:text-claude-text-muted-dark">
+          <p className="text-[#585858] text-lg max-w-xl mx-auto font-serif-claude">
             Your AI-powered coding assistant with GitHub integration
           </p>
         </div>
 
-        {/* Suggestion Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={index}
-              onClick={() => onSuggestionClick(suggestion.prompt)}
-              className="group p-4 text-left bg-claude-surface dark:bg-claude-surface-dark border border-claude-border dark:border-claude-border-dark rounded-xl hover:border-claude-orange hover:shadow-md transition-all duration-200"
+        {/* Feature Grid */}
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          {suggestions.map((feature, idx) => (
+            <button 
+              key={idx}
+              onClick={() => onSuggestionClick(feature.desc)}
+              className="group flex flex-col items-start p-4 rounded-xl border border-[#E5E0D8] bg-white hover:bg-[#FAF9F6] hover:border-[#D1CDC7] transition-all duration-200 text-left shadow-sm hover:shadow-md"
             >
-              <div className="flex items-start gap-3">
-                <div className="p-2 bg-claude-orange-light rounded-lg group-hover:bg-claude-orange group-hover:text-white transition-colors">
-                  <suggestion.icon size={18} className="text-claude-orange group-hover:text-white" />
+              <div className="flex items-center gap-2 mb-2 text-[#393939] font-medium">
+                <div className="p-1.5 rounded-md bg-[#F4F3EF] group-hover:bg-[#EAE8E2] text-[#585858] transition-colors">
+                  <feature.icon className="w-4 h-4" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                    {suggestion.title}
-                  </h3>
-                  <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark line-clamp-2">
-                    {suggestion.prompt}
-                  </p>
-                </div>
+                {feature.title}
               </div>
+              <p className="text-sm text-[#767676] leading-relaxed">
+                {feature.desc}
+              </p>
             </button>
           ))}
         </div>
 
-        {/* Quick Tips */}
-        <div className="bg-claude-orange-light border border-claude-orange/20 rounded-xl p-6">
-          <h3 className="font-medium text-claude-text dark:text-claude-text-dark mb-3 flex items-center gap-2">
-            <Sparkles size={18} className="text-claude-orange" />
+        {/* Quick Tips Section */}
+        <div className="w-full rounded-xl border border-[#E5E0D8] bg-[#FAF9F6] p-5 text-sm text-[#585858] shadow-sm">
+          <div className="flex items-center gap-2 font-medium text-[#393939] mb-3">
+            <Zap className="w-4 h-4 text-[#DA7756]" />
             Quick Tips
-          </h3>
-          <ul className="space-y-2 text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-            <li className="flex items-start gap-2">
-              <span className="text-claude-orange mt-0.5">•</span>
-              <span>Use <strong>Safe Mode</strong> to test changes in a branch before merging to main</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-claude-orange mt-0.5">•</span>
-              <span>Drag and drop images, code files, or PDFs directly into the chat</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-claude-orange mt-0.5">•</span>
-              <span>Switch models anytime to balance cost and performance</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-claude-orange mt-0.5">•</span>
-              <span>Use quick commands like <code className="px-1.5 py-0.5 bg-claude-bg dark:bg-claude-bg-dark rounded">/fix</code>, <code className="px-1.5 py-0.5 bg-claude-bg dark:bg-claude-bg-dark rounded">/review</code>, or <code className="px-1.5 py-0.5 bg-claude-bg dark:bg-claude-bg-dark rounded">/test</code></span>
-            </li>
+          </div>
+          <ul className="space-y-2 list-disc list-inside marker:text-[#BDBAB3]">
+            <li>Use <span className="font-medium text-[#393939]">Safe Mode</span> to test changes in a branch</li>
+            <li>Drag and drop images, code files, or PDFs directly into the chat</li>
+            <li>Switch models anytime to balance cost and performance</li>
           </ul>
         </div>
+
       </div>
     </div>
   );
