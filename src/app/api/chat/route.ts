@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-const PRICE_PER_MILLION_INPUT = {
+const PRICE_PER_MILLION_INPUT: Record<string, number> = {
   'haiku-4.5': 1,
   'sonnet-4.5': 3,
   'sonnet-4': 3,
@@ -9,7 +9,7 @@ const PRICE_PER_MILLION_INPUT = {
   'opus-4.1': 15,
 };
 
-const PRICE_PER_MILLION_OUTPUT = {
+const PRICE_PER_MILLION_OUTPUT: Record<string, number> = {
   'haiku-4.5': 5,
   'sonnet-4.5': 15,
   'sonnet-4': 15,
@@ -92,13 +92,13 @@ export async function POST(req: NextRequest) {
                 budget_tokens: 10000
               }
             })
-          }) as any;
+          } as any);
 
           let fullText = '';
           let thinkingText = '';
           let usage: any = null;
 
-          for await (const event of messageStream) {
+          for await (const event of messageStream as any) {
             if (event.type === 'content_block_start') {
               if (event.content_block.type === 'thinking') {
                 thinkingText = '';
@@ -119,8 +119,8 @@ export async function POST(req: NextRequest) {
 
           // Calculate cost
           if (usage) {
-            const inputCost = (usage.input_tokens / 1_000_000) * (PRICE_PER_MILLION_INPUT as any)[settings.model];
-            const outputCost = (usage.output_tokens / 1_000_000) * (PRICE_PER_MILLION_OUTPUT as any)[settings.model];
+            const inputCost = (usage.input_tokens / 1_000_000) * (PRICE_PER_MILLION_INPUT[settings.model] || 3);
+            const outputCost = (usage.output_tokens / 1_000_000) * (PRICE_PER_MILLION_OUTPUT[settings.model] || 15);
             const totalCost = inputCost + outputCost;
 
             controller.enqueue(
