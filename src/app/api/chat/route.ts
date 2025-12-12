@@ -119,8 +119,8 @@ export async function POST(req: NextRequest) {
 
           // Calculate cost
           if (usage) {
-            const inputCost = (usage.input_tokens / 1_000_000) * PRICE_PER_MILLION_INPUT[settings.model];
-            const outputCost = (usage.output_tokens / 1_000_000) * PRICE_PER_MILLION_OUTPUT[settings.model];
+            const inputCost = (usage.input_tokens / 1_000_000) * (PRICE_PER_MILLION_INPUT as any)[settings.model];
+            const outputCost = (usage.output_tokens / 1_000_000) * (PRICE_PER_MILLION_OUTPUT as any)[settings.model];
             const totalCost = inputCost + outputCost;
 
             controller.enqueue(
