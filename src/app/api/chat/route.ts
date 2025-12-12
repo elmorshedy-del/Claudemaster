@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         try {
           const messageStream = await anthropic.messages.create({
             model,
-            max_tokens: 4096,
+            max_tokens: 8000,
             messages: anthropicMessages,
             stream: true,
             ...(settings.enableExtendedThinking && {
