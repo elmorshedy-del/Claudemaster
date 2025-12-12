@@ -5,13 +5,13 @@ import { GitHubClient } from '@/lib/github';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const token = request.headers.get('x-github-token');
+    const token = request.headers.get('x-github-token') || process.env.GITHUB_TOKEN;
     const owner = searchParams.get('owner');
     const repo = searchParams.get('repo');
 
     if (!token || !owner || !repo) {
       return NextResponse.json(
-        { error: 'Missing required parameters' },
+        { error: 'Missing required parameters or GitHub token not configured' },
         { status: 400 }
       );
     }
@@ -32,11 +32,12 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, token, owner, repo, ...params } = body;
+    const { action, owner, repo, ...params } = body;
+    const token = body.token || process.env.GITHUB_TOKEN;
 
     if (!token || !owner || !repo) {
       return NextResponse.json(
-        { error: 'Missing required parameters' },
+        { error: 'Missing required parameters or GitHub token not configured' },
         { status: 400 }
       );
     }
