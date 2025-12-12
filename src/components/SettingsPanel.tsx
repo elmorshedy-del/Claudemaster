@@ -1,417 +1,328 @@
 'use client';
 
-import { X, Save, Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { X, Save, Eye, EyeOff, AlertCircle, Check, Key, Github, Cpu, Shield, Sparkles } from 'lucide-react';
 import { Settings } from '@/types';
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   settings: Settings;
-  onSave: (settings: Settings) => void;
+  onSettingsChange: (settings: Settings) => void;
 }
 
-const MODEL_OPTIONS = [
-  { value: 'haiku-4.5', label: 'Haiku 4.5', price: '$1/$5', speed: 'Fastest', description: 'Best for simple tasks' },
-  { value: 'sonnet-4.5', label: 'Sonnet 4.5 ⭐', price: '$3/$15', speed: 'Fast', description: 'Recommended - Best balance' },
-  { value: 'sonnet-4', label: 'Sonnet 4', price: '$3/$15', speed: 'Fast', description: 'Alternative option' },
-  { value: 'opus-4.1', label: 'Opus 4.1', price: '$15/$75', speed: 'Medium', description: 'Complex reasoning' },
-  { value: 'opus-4.5', label: 'Opus 4.5', price: '$15/$75', speed: 'Medium', description: 'Most powerful' },
+const MODELS = [
+  { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', description: 'Latest and most capable' },
+  { id: 'claude-3-5-sonnet-20241022', name: 'Claude 3.5 Sonnet', description: 'Fast and intelligent' },
+  { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku', description: 'Quick and efficient' },
+  { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most powerful' },
 ];
 
-export default function SettingsPanel({ isOpen, onClose, settings, onSave }: SettingsPanelProps) {
+export default function SettingsPanel({ isOpen, onClose, settings, onSettingsChange }: SettingsPanelProps) {
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
-  const [apiKey, setApiKey] = useState('');
-  const [githubToken, setGithubToken] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [showGithubToken, setShowGithubToken] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [errors, setErrors] = useState<{ apiKey?: string; githubToken?: string }>({});
 
+  // Sync with parent settings when they change
   useEffect(() => {
-    // Load from localStorage
-    const savedApiKey = localStorage.getItem('anthropic_api_key') || '';
-    const savedGithubToken = localStorage.getItem('github_token') || '';
-    setApiKey(savedApiKey);
-    setGithubToken(savedGithubToken);
-  }, [isOpen]);
+    setLocalSettings(settings);
+  }, [settings]);
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedApiKey = localStorage.getItem('claude-coder-api-key');
+      const savedGithubToken = localStorage.getItem('claude-coder-github-token');
+      const savedModel = localStorage.getItem('claude-coder-model');
+      const savedSafeMode = localStorage.getItem('claude-coder-safe-mode');
+
+      if (savedApiKey || savedGithubToken || savedModel || savedSafeMode) {
+        const loadedSettings = {
+          ...localSettings,
+          apiKey: savedApiKey || localSettings.apiKey,
+          githubToken: savedGithubToken || localSettings.githubToken,
+          model: savedModel || localSettings.model,
+          safeMode: savedSafeMode ? savedSafeMode === 'true' : localSettings.safeMode,
+        };
+        setLocalSettings(loadedSettings);
+        onSettingsChange(loadedSettings);
+      }
+    }
+  }, []);
+
+  const validateSettings = (): boolean => {
+    const newErrors: { apiKey?: string; githubToken?: string } = {};
+
+    if (localSettings.apiKey && !localSettings.apiKey.startsWith('sk-ant-')) {
+      newErrors.apiKey = 'API key should start with "sk-ant-"';
+    }
+
+    if (localSettings.githubToken && !localSettings.githubToken.startsWith('ghp_') && !localSettings.githubToken.startsWith('github_pat_')) {
+      newErrors.githubToken = 'GitHub token should start with "ghp_" or "github_pat_"';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSave = () => {
-    // Save API keys to localStorage
-    if (apiKey) localStorage.setItem('anthropic_api_key', apiKey);
-    if (githubToken) localStorage.setItem('github_token', githubToken);
-    
-    // Save settings
-    localStorage.setItem('app_settings', JSON.stringify(localSettings));
-    onSave(localSettings);
-    
+    if (!validateSettings()) return;
+
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      if (localSettings.apiKey) {
+        localStorage.setItem('claude-coder-api-key', localSettings.apiKey);
+      }
+      if (localSettings.githubToken) {
+        localStorage.setItem('claude-coder-github-token', localSettings.githubToken);
+      }
+      localStorage.setItem('claude-coder-model', localSettings.model);
+      localStorage.setItem('claude-coder-safe-mode', String(localSettings.safeMode));
+    }
+
+    // Update parent state
+    onSettingsChange(localSettings);
+
+    // Show success feedback
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
-      onClose();
-    }, 1500);
+    }, 2000);
+  };
+
+  const handleChange = (field: keyof Settings, value: string | boolean) => {
+    setLocalSettings(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (field === 'apiKey' || field === 'githubToken') {
+      setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
   };
 
   if (!isOpen) return null;
 
   return (
     <>
-        {/* Overlay */}
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" />
+      {/* Overlay */}
+      <div 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 animate-fade-in" 
+        onClick={onClose} 
+      />
 
-        {/* Panel */}
-        <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-claude-surface dark:bg-claude-surface-dark shadow-2xl z-50 overflow-y-auto">
-        <div className="sticky top-0 bg-claude-surface dark:bg-claude-surface-dark border-b border-claude-border dark:border-claude-border-dark z-10">
+      {/* Panel */}
+      <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-[var(--claude-surface)] shadow-2xl z-50 overflow-hidden flex flex-col animate-slide-in-right">
+        {/* Header */}
+        <div className="flex-shrink-0 border-b border-[var(--claude-border)] bg-[var(--claude-surface)]">
           <div className="flex items-center justify-between p-6">
-            <h2 className="text-2xl font-semibold text-claude-text dark:text-claude-text-dark">
-              Settings
-            </h2>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--claude-terracotta)] to-[#E89B7D] flex items-center justify-center shadow-sm">
+                <Sparkles size={20} className="text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold text-[var(--claude-text)]" style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>
+                  Settings
+                </h2>
+                <p className="text-sm text-[var(--claude-text-muted)]">Configure your coding assistant</p>
+              </div>
+            </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-claude-bg dark:hover:bg-claude-bg-dark rounded-lg transition-colors"
+              className="p-2.5 hover:bg-[var(--claude-sand-light)] rounded-xl transition-all duration-200 hover:scale-105"
             >
-              <X size={20} className="text-claude-text-muted dark:text-claude-text-muted-dark" />
+              <X size={20} className="text-[var(--claude-text-muted)]" />
             </button>
           </div>
         </div>
 
-        <div className="p-6 space-y-8">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
           {/* API Configuration */}
-          <section>
-            <h3 className="text-lg font-semibold text-claude-text dark:text-claude-text-dark mb-4">
-              API Configuration
-            </h3>
-            
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Key size={18} className="text-[var(--claude-terracotta)]" />
+              <h3 className="text-base font-semibold text-[var(--claude-text)]">
+                API Configuration
+              </h3>
+            </div>
+
             {/* Anthropic API Key */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-claude-text dark:text-claude-text-dark mb-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[var(--claude-text-secondary)]">
                 Anthropic API Key
               </label>
               <div className="relative">
                 <input
                   type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-ant-..."
-                  className="w-full px-4 py-2.5 pr-24 bg-claude-bg dark:bg-claude-bg-dark border border-claude-border dark:border-claude-border-dark rounded-lg text-claude-text dark:text-claude-text-dark placeholder-claude-text-muted dark:placeholder-claude-text-muted-dark focus:outline-none focus:ring-2 focus:ring-claude-orange font-mono text-sm"
+                  value={localSettings.apiKey}
+                  onChange={(e) => handleChange('apiKey', e.target.value)}
+                  placeholder="sk-ant-xxxxx..."
+                  className="input-claude pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-claude-surface dark:hover:bg-claude-surface-dark rounded transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-[var(--claude-text-muted)] hover:text-[var(--claude-text)] transition-colors rounded-lg hover:bg-[var(--claude-sand-light)]"
                 >
-                  {showApiKey ? (
-                    <EyeOff size={16} className="text-claude-text-muted dark:text-claude-text-muted-dark" />
-                  ) : (
-                    <Eye size={16} className="text-claude-text-muted dark:text-claude-text-muted-dark" />
-                  )}
+                  {showApiKey ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <p className="text-xs text-claude-text-muted dark:text-claude-text-muted-dark mt-1">
-                Get your API key from <a href="https://console.anthropic.com" target="_blank" className="text-claude-orange hover:underline">console.anthropic.com</a>
+              {errors.apiKey && (
+                <div className="flex items-center gap-2 text-sm text-[var(--claude-error)]">
+                  <AlertCircle size={14} />
+                  <span>{errors.apiKey}</span>
+                </div>
+              )}
+              <p className="text-xs text-[var(--claude-text-muted)]">
+                Get your API key from{' '}
+                <a 
+                  href="https://console.anthropic.com/settings/keys" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[var(--claude-terracotta)] hover:underline"
+                >
+                  console.anthropic.com
+                </a>
               </p>
             </div>
 
             {/* GitHub Token */}
-            <div>
-              <label className="block text-sm font-medium text-claude-text dark:text-claude-text-dark mb-2">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[var(--claude-text-secondary)]">
                 GitHub Personal Access Token
               </label>
               <div className="relative">
                 <input
                   type={showGithubToken ? 'text' : 'password'}
-                  value={githubToken}
-                  onChange={(e) => setGithubToken(e.target.value)}
-                  placeholder="ghp_..."
-                  className="w-full px-4 py-2.5 pr-24 bg-claude-bg dark:bg-claude-bg-dark border border-claude-border dark:border-claude-border-dark rounded-lg text-claude-text dark:text-claude-text-dark placeholder-claude-text-muted dark:placeholder-claude-text-muted-dark focus:outline-none focus:ring-2 focus:ring-claude-orange font-mono text-sm"
+                  value={localSettings.githubToken}
+                  onChange={(e) => handleChange('githubToken', e.target.value)}
+                  placeholder="ghp_xxxxx..."
+                  className="input-claude pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowGithubToken(!showGithubToken)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:bg-claude-surface dark:hover:bg-claude-surface-dark rounded transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-[var(--claude-text-muted)] hover:text-[var(--claude-text)] transition-colors rounded-lg hover:bg-[var(--claude-sand-light)]"
                 >
-                  {showGithubToken ? (
-                    <EyeOff size={16} className="text-claude-text-muted dark:text-claude-text-muted-dark" />
-                  ) : (
-                    <Eye size={16} className="text-claude-text-muted dark:text-claude-text-muted-dark" />
-                  )}
+                  {showGithubToken ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <p className="text-xs text-claude-text-muted dark:text-claude-text-muted-dark mt-1">
-                Create token at <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank" className="text-claude-orange hover:underline">github.com/settings/tokens</a> with 'repo' scope
+              {errors.githubToken && (
+                <div className="flex items-center gap-2 text-sm text-[var(--claude-error)]">
+                  <AlertCircle size={14} />
+                  <span>{errors.githubToken}</span>
+                </div>
+              )}
+              <p className="text-xs text-[var(--claude-text-muted)]">
+                Create a token with repo access at{' '}
+                <a 
+                  href="https://github.com/settings/tokens/new" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-[var(--claude-terracotta)] hover:underline"
+                >
+                  github.com/settings/tokens
+                </a>
               </p>
             </div>
           </section>
 
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-[var(--claude-border)] to-transparent" />
+
           {/* Model Selection */}
-          <section>
-            <h3 className="text-lg font-semibold text-claude-text dark:text-claude-text-dark mb-4">
-              Default Model
-            </h3>
-            <div className="space-y-2">
-              {MODEL_OPTIONS.map((model) => (
-                <label
-                  key={model.value}
-                  className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all ${
-                    localSettings.model === model.value
-                      ? 'border-claude-orange bg-claude-orange-light'
-                      : 'border-claude-border dark:border-claude-border-dark hover:border-claude-orange/50'
-                  }`}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Cpu size={18} className="text-[var(--claude-terracotta)]" />
+              <h3 className="text-base font-semibold text-[var(--claude-text)]">
+                Model Selection
+              </h3>
+            </div>
+
+            <div className="grid gap-3">
+              {MODELS.map((model) => (
+                <button
+                  key={model.id}
+                  onClick={() => handleChange('model', model.id)}
+                  className={`
+                    w-full p-4 rounded-xl border text-left transition-all duration-200
+                    ${localSettings.model === model.id 
+                      ? 'border-[var(--claude-terracotta)] bg-[var(--claude-terracotta-subtle)] shadow-sm' 
+                      : 'border-[var(--claude-border)] hover:border-[var(--claude-border-strong)] hover:bg-[var(--claude-sand-light)]'
+                    }
+                  `}
                 >
-                  <input
-                    type="radio"
-                    name="model"
-                    value={model.value}
-                    checked={localSettings.model === model.value}
-                    onChange={(e) => setLocalSettings({ ...localSettings, model: e.target.value as any })}
-                    className="mt-1 accent-claude-orange"
-                  />
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-claude-text dark:text-claude-text-dark">
-                        {model.label}
-                      </span>
-                      <span className="text-xs text-claude-text-muted dark:text-claude-text-muted-dark">
-                        {model.price}
-                      </span>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-[var(--claude-text)]">{model.name}</div>
+                      <div className="text-sm text-[var(--claude-text-muted)]">{model.description}</div>
                     </div>
-                    <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                      {model.description} • {model.speed}
-                    </p>
+                    {localSettings.model === model.id && (
+                      <div className="w-6 h-6 rounded-full bg-[var(--claude-terracotta)] flex items-center justify-center">
+                        <Check size={14} className="text-white" />
+                      </div>
+                    )}
                   </div>
-                </label>
+                </button>
               ))}
             </div>
           </section>
 
-          {/* Deploy Mode */}
-          <section>
-            <h3 className="text-lg font-semibold text-claude-text dark:text-claude-text-dark mb-4">
-              Deployment Mode
-            </h3>
-            <div className="space-y-2">
-              <label className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all ${
-                localSettings.deployMode === 'safe'
-                  ? 'border-claude-orange bg-claude-orange-light'
-                  : 'border-claude-border dark:border-claude-border-dark hover:border-claude-orange/50'
-              }`}>
-                <input
-                  type="radio"
-                  name="deployMode"
-                  value="safe"
-                  checked={localSettings.deployMode === 'safe'}
-                  onChange={(e) => setLocalSettings({ ...localSettings, deployMode: e.target.value as any })}
-                  className="mt-1 accent-claude-orange"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                    🛡️ Safe Mode (Recommended)
-                  </div>
-                  <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                    Creates a branch for changes. Test before merging to main.
-                  </p>
-                </div>
-              </label>
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-[var(--claude-border)] to-transparent" />
 
-              <label className={`flex items-start gap-3 p-4 border rounded-lg cursor-pointer transition-all ${
-                localSettings.deployMode === 'direct'
-                  ? 'border-claude-orange bg-claude-orange-light'
-                  : 'border-claude-border dark:border-claude-border-dark hover:border-claude-orange/50'
-              }`}>
-                <input
-                  type="radio"
-                  name="deployMode"
-                  value="direct"
-                  checked={localSettings.deployMode === 'direct'}
-                  onChange={(e) => setLocalSettings({ ...localSettings, deployMode: e.target.value as any })}
-                  className="mt-1 accent-claude-orange"
-                />
-                <div className="flex-1">
-                  <div className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                    ⚡ Direct Mode
-                  </div>
-                  <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                    Pushes directly to main branch. Use for quick fixes only.
-                  </p>
-                </div>
-              </label>
+          {/* Safe Mode */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield size={18} className="text-[var(--claude-terracotta)]" />
+              <h3 className="text-base font-semibold text-[var(--claude-text)]">
+                Safety Settings
+              </h3>
             </div>
-          </section>
 
-          {/* Features */}
-          <section>
-            <h3 className="text-lg font-semibold text-claude-text dark:text-claude-text-dark mb-4">
-              Features
-            </h3>
-            <div className="space-y-4">
-              {/* Web Search */}
-              <label className="flex items-center justify-between p-4 bg-claude-bg dark:bg-claude-bg-dark rounded-lg">
+            <button
+              onClick={() => handleChange('safeMode', !localSettings.safeMode)}
+              className={`
+                w-full p-4 rounded-xl border text-left transition-all duration-200
+                ${localSettings.safeMode 
+                  ? 'border-[var(--claude-success)] bg-[rgba(74,157,110,0.08)]' 
+                  : 'border-[var(--claude-border)] hover:border-[var(--claude-border-strong)] hover:bg-[var(--claude-sand-light)]'
+                }
+              `}
+            >
+              <div className="flex items-center justify-between">
                 <div className="flex-1">
-                  <div className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                    Web Search
+                  <div className="font-medium text-[var(--claude-text)]">Safe Mode</div>
+                  <div className="text-sm text-[var(--claude-text-muted)]">
+                    Create changes in a new branch instead of directly on main
                   </div>
-                  <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                    Enable Claude to search the web for current information
-                  </p>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={localSettings.enableWebSearch}
-                  onChange={(e) => setLocalSettings({ ...localSettings, enableWebSearch: e.target.checked })}
-                  className="w-11 h-6 accent-claude-orange"
-                />
-              </label>
-
-              {/* Auto-detect Web Search */}
-              {localSettings.enableWebSearch && (
-                <label className="flex items-center justify-between p-4 bg-claude-bg dark:bg-claude-bg-dark rounded-lg ml-4">
-                  <div className="flex-1">
-                    <div className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                      Auto-detect when to search
-                    </div>
-                    <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                      Let Claude decide when web search is needed
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={localSettings.webSearchAutoDetect}
-                    onChange={(e) => setLocalSettings({ ...localSettings, webSearchAutoDetect: e.target.checked })}
-                    className="w-11 h-6 accent-claude-orange"
-                  />
-                </label>
-              )}
-
-              {/* Extended Thinking */}
-              <label className="flex items-center justify-between p-4 bg-claude-bg dark:bg-claude-bg-dark rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                    Extended Thinking
-                  </div>
-                  <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                    Deep reasoning mode for complex problems (uses more tokens)
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={localSettings.enableExtendedThinking}
-                  onChange={(e) => setLocalSettings({ ...localSettings, enableExtendedThinking: e.target.checked })}
-                  className="w-11 h-6 accent-claude-orange"
-                />
-              </label>
-
-              {/* Conversation Compression */}
-              <label className="flex items-center justify-between p-4 bg-claude-bg dark:bg-claude-bg-dark rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                    Conversation Compression
-                  </div>
-                  <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                    Compress old messages to save tokens (keeps last 10 intact)
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={localSettings.enableConversationCompression}
-                  onChange={(e) => setLocalSettings({ ...localSettings, enableConversationCompression: e.target.checked })}
-                  className="w-11 h-6 accent-claude-orange"
-                />
-              </label>
-
-              {/* Pre-built Commands */}
-              <label className="flex items-center justify-between p-4 bg-claude-bg dark:bg-claude-bg-dark rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium text-claude-text dark:text-claude-text-dark mb-1">
-                    Quick Commands
-                  </div>
-                  <p className="text-sm text-claude-text-muted dark:text-claude-text-muted-dark">
-                    Enable /fix, /review, /test, /refactor shortcuts
-                  </p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={localSettings.preBuiltCommands}
-                  onChange={(e) => setLocalSettings({ ...localSettings, preBuiltCommands: e.target.checked })}
-                  className="w-11 h-6 accent-claude-orange"
-                />
-              </label>
-            </div>
-          </section>
-
-          {/* Budget Limits */}
-          <section>
-            <h3 className="text-lg font-semibold text-claude-text dark:text-claude-text-dark mb-4">
-              Budget Limits
-            </h3>
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800/30 rounded-lg p-4 mb-4">
-              <div className="flex gap-2">
-                <AlertCircle size={18} className="text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-yellow-800 dark:text-yellow-200">
-                  Set spending limits to control costs. Claude will warn you when approaching limits.
+                <div className={`
+                  w-12 h-7 rounded-full relative transition-colors duration-200
+                  ${localSettings.safeMode ? 'bg-[var(--claude-success)]' : 'bg-[var(--claude-sand)]'}
+                `}>
+                  <div className={`
+                    absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200
+                    ${localSettings.safeMode ? 'left-6' : 'left-1'}
+                  `} />
                 </div>
               </div>
-            </div>
-
-            <label className="flex items-center justify-between p-4 bg-claude-bg dark:bg-claude-bg-dark rounded-lg mb-4">
-              <span className="font-medium text-claude-text dark:text-claude-text-dark">
-                Enable Budget Limits
-              </span>
-              <input
-                type="checkbox"
-                checked={localSettings.tokenBudget.enabled}
-                onChange={(e) => setLocalSettings({
-                  ...localSettings,
-                  tokenBudget: { ...localSettings.tokenBudget, enabled: e.target.checked }
-                })}
-                className="w-11 h-6 accent-claude-orange"
-              />
-            </label>
-
-            {localSettings.tokenBudget.enabled && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-claude-text dark:text-claude-text-dark mb-2">
-                    Daily Limit ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={localSettings.tokenBudget.perDay}
-                    onChange={(e) => setLocalSettings({
-                      ...localSettings,
-                      tokenBudget: { ...localSettings.tokenBudget, perDay: parseFloat(e.target.value) }
-                    })}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-2.5 bg-claude-bg dark:bg-claude-bg-dark border border-claude-border dark:border-claude-border-dark rounded-lg text-claude-text dark:text-claude-text-dark focus:outline-none focus:ring-2 focus:ring-claude-orange"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-claude-text dark:text-claude-text-dark mb-2">
-                    Per Message Limit ($)
-                  </label>
-                  <input
-                    type="number"
-                    value={localSettings.tokenBudget.perMessage}
-                    onChange={(e) => setLocalSettings({
-                      ...localSettings,
-                      tokenBudget: { ...localSettings.tokenBudget, perMessage: parseFloat(e.target.value) }
-                    })}
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-2.5 bg-claude-bg dark:bg-claude-bg-dark border border-claude-border dark:border-claude-border-dark rounded-lg text-claude-text dark:text-claude-text-dark focus:outline-none focus:ring-2 focus:ring-claude-orange"
-                  />
-                </div>
-              </div>
-            )}
+            </button>
           </section>
         </div>
 
-        {/* Save Button */}
-        <div className="sticky bottom-0 bg-claude-surface dark:bg-claude-surface-dark border-t border-claude-border dark:border-claude-border-dark p-6">
+        {/* Footer with Save Button */}
+        <div className="flex-shrink-0 border-t border-[var(--claude-border)] bg-[var(--claude-surface)] p-6">
           <button
             onClick={handleSave}
             disabled={saved}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-claude-orange hover:bg-claude-orange-hover disabled:bg-green-600 text-white font-medium rounded-lg transition-colors"
+            className={`
+              w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-medium transition-all duration-200
+              ${saved 
+                ? 'bg-[var(--claude-success)] text-white' 
+                : 'bg-[var(--claude-terracotta)] hover:bg-[var(--claude-terracotta-hover)] text-white shadow-sm hover:shadow-md hover:-translate-y-0.5'
+              }
+            `}
           >
             {saved ? (
               <>
