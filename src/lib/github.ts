@@ -12,6 +12,23 @@ export class GitHubClient {
     this.repo = repo;
   }
 
+  // Verify the authenticated user and repository access
+  async getAuthContext(): Promise<{ user: string; repo: { name: string; defaultBranch: string; url: string } }> {
+    const [user, repo] = await Promise.all([
+      this.octokit.rest.users.getAuthenticated(),
+      this.octokit.rest.repos.get({ owner: this.owner, repo: this.repo })
+    ]);
+
+    return {
+      user: user.data.login,
+      repo: {
+        name: repo.data.name,
+        defaultBranch: repo.data.default_branch,
+        url: repo.data.html_url
+      }
+    };
+  }
+
   // Get the SHA for a branch
   async getBranchSHA(branch: string): Promise<string> {
     const { data } = await this.octokit.rest.repos.getBranch({
@@ -271,6 +288,18 @@ export class GitHubClient {
       repo: this.repo,
       pull_number: prNumber,
     });
+  }
+
+  // Merge a branch into a base branch
+  async mergeBranch(base: string, head: string): Promise<{ sha: string; message: string }> {
+    const { data } = await this.octokit.rest.repos.merge({
+      owner: this.owner,
+      repo: this.repo,
+      base,
+      head,
+    });
+
+    return { sha: data.sha, message: data.commit?.message || 'Merged' };
   }
 
   // Delete a branch
