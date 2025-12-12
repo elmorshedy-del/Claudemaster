@@ -11,7 +11,8 @@ import FileUpload from '@/components/FileUpload';
 import BranchManager from '@/components/BranchManager';
 import DiffViewer from '@/components/DiffViewer';
 import PasswordProtection from '@/components/PasswordProtection';
-import { Message, Settings, Conversation, UploadedFile } from '@/types';
+import RepoSelector from '@/components/RepoSelector';
+import { Message, Settings, Conversation, UploadedFile, Repository } from '@/types';
 
 const DEFAULT_SETTINGS: Settings = {
   deployMode: 'safe',
@@ -48,6 +49,8 @@ export default function Home() {
     monthlyCost: 0,
     tokensUsed: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }
   });
+  const [repos, setRepos] = useState<Repository[]>([]);
+  const [activeRepo, setActiveRepo] = useState<Repository | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -58,6 +61,7 @@ export default function Home() {
     const savedDarkMode = localStorage.getItem('dark_mode');
     const savedConversations = localStorage.getItem('conversations');
     const savedCostTracking = localStorage.getItem('cost_tracking');
+    const savedRepos = localStorage.getItem('github_repos');
     
     if (savedSettings) setSettings(JSON.parse(savedSettings));
     if (savedDarkMode) setDarkMode(savedDarkMode === 'true');
@@ -70,6 +74,12 @@ export default function Home() {
       })));
     }
     if (savedCostTracking) setCostTracking(JSON.parse(savedCostTracking));
+    if (savedRepos) {
+      const parsed = JSON.parse(savedRepos);
+      setRepos(parsed);
+      const active = parsed.find((r: Repository) => r.isActive);
+      if (active) setActiveRepo(active);
+    }
     
     // Apply dark mode
     if (savedDarkMode === 'true') {
@@ -104,6 +114,43 @@ export default function Home() {
     localStorage.setItem('cost_tracking', JSON.stringify(costTracking));
   }, [costTracking]);
 
+  // Save repos
+  useEffect(() => {
+    if (repos.length > 0) {
+      localStorage.setItem('github_repos', JSON.stringify(repos));
+    }
+  }, [repos]);
+
+  // Repo handlers
+  const handleSelectRepo = (repo: Repository) => {
+    setRepos(prev => prev.map(r => ({ ...r, isActive: r.id === repo.id })));
+    setActiveRepo(repo);
+  };
+
+  const handleAddRepo = (repoData: Omit<Repository, 'id' | 'isActive'>) => {
+    const newRepo: Repository = {
+      ...repoData,
+      id: Date.now().toString(),
+      isActive: repos.length === 0 // First repo is active by default
+    };
+    setRepos(prev => [...prev, newRepo]);
+    if (repos.length === 0) {
+      setActiveRepo(newRepo);
+    }
+  };
+
+  const handleDeleteRepo = (id: string) => {
+    setRepos(prev => prev.filter(r => r.id !== id));
+    if (activeRepo?.id === id) {
+      const remaining = repos.filter(r => r.id !== id);
+      if (remaining.length > 0) {
+        handleSelectRepo(remaining[0]);
+      } else {
+        setActiveRepo(null);
+      }
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
     
@@ -121,16 +168,6 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const githubToken = typeof window !== 'undefined'
-        ? localStorage.getItem('github_token') || undefined
-        : undefined;
-      const repoOwner = typeof window !== 'undefined'
-        ? localStorage.getItem('github_repo_owner') || undefined
-        : undefined;
-      const repoName = typeof window !== 'undefined'
-        ? localStorage.getItem('github_repo_name') || undefined
-        : undefined;
-
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,9 +175,11 @@ export default function Home() {
           messages: [...messages, userMessage],
           settings,
           files: userMessage.files,
-          githubToken,
-          repoOwner,
-          repoName
+          repo: activeRepo ? {
+            owner: activeRepo.owner,
+            name: activeRepo.name,
+            token: activeRepo.token
+          } : undefined
         })
       });
 
@@ -309,7 +348,10 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'merge',
-          branchName: currentBranch.name 
+          branchName: currentBranch.name,
+          token: activeRepo?.token,
+          owner: activeRepo?.owner,
+          repo: activeRepo?.name
         })
       });
       
@@ -339,7 +381,10 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'discard',
-          branchName: currentBranch.name 
+          branchName: currentBranch.name,
+          token: activeRepo?.token,
+          owner: activeRepo?.owner,
+          repo: activeRepo?.name
         })
       });
       
@@ -426,6 +471,15 @@ export default function Home() {
                     </option>
                   ))}
                 </select>
+
+                {/* Repo Selector */}
+                <RepoSelector
+                  repos={repos}
+                  activeRepo={activeRepo}
+                  onSelectRepo={handleSelectRepo}
+                  onAddRepo={handleAddRepo}
+                  onDeleteRepo={handleDeleteRepo}
+                />
 
                 {/* Deploy Mode Toggle */}
                 <button
