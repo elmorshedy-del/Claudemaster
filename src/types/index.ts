@@ -35,6 +35,15 @@ export interface FileChange {
   diff?: string;
 }
 
+// Repository config
+export interface Repository {
+  id: string;
+  name: string;
+  owner: string;
+  token: string;
+  isActive: boolean;
+}
+
 // GitHub types
 export interface RepoFile {
   path: string;
