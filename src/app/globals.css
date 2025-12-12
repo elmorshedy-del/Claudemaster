@@ -1,26 +1,46 @@
 @import "tailwindcss";
 
-/* Claude.ai exact fonts */
+/* Fonts matching Claude Coder Redesign */
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Inter:wght@300;400;500;600&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-@import url('https://cdn.jsdelivr.net/npm/@fontsource/source-serif-4@5.0.0/index.min.css');
 
 :root {
-  /* Claude.ai exact color palette */
-  --claude-bg: #F5F5F5;
-  --claude-bg-dark: #1F1F1F;
+  /* Updated Palette based on Redesign */
+  --claude-bg: #F5F2EB;
+  --claude-sidebar: #F0EFEA;
   --claude-surface: #FFFFFF;
-  --claude-surface-dark: #2F2F2F;
-  --claude-text: #2B2B2B;
-  --claude-text-dark: #ECECEC;
-  --claude-text-muted: #707070;
-  --claude-text-muted-dark: #A0A0A0;
-  --claude-border: #E5E5E5;
-  --claude-border-dark: #404040;
-  --claude-orange: #CC785C;
-  --claude-orange-hover: #B86B50;
-  --claude-orange-light: rgba(204, 120, 92, 0.1);
-  --claude-user-bg: #F0F0F0;
-  --claude-user-bg-dark: #353535;
+  --claude-item-hover: #E6E4DD;
+  
+  /* Text Colors */
+  --claude-text-primary: #393939;
+  --claude-text-secondary: #585858;
+  --claude-text-tertiary: #8F8F8F;
+  
+  /* Borders */
+  --claude-border: #E5E0D8;
+  --claude-border-strong: #D1CDC7;
+  
+  /* Accents */
+  --claude-accent: #DA7756;
+  --claude-accent-hover: #C76445;
+  --claude-accent-light: rgba(218, 119, 86, 0.1);
+  --claude-selection: #E6D0C2;
+}
+
+/* Dark mode overrides (preserving logic if system switches, 
+   though the redesign leans heavily on the light warm theme) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --claude-bg: #1F1F1F;
+    --claude-sidebar: #1A1A1A;
+    --claude-surface: #2F2F2F;
+    --claude-item-hover: #353535;
+    --claude-text-primary: #ECECEC;
+    --claude-text-secondary: #A0A0A0;
+    --claude-text-tertiary: #707070;
+    --claude-border: #404040;
+    --claude-border-strong: #505050;
+  }
 }
 
 * {
@@ -29,196 +49,76 @@
   margin: 0;
 }
 
-html,
 body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+  font-family: 'Inter', sans-serif;
   background: var(--claude-bg);
-  color: var(--claude-text);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  color: var(--claude-text-primary);
+  /* Selection color from redesign */
 }
 
-body.dark {
-  background: var(--claude-bg-dark);
-  color: var(--claude-text-dark);
+::selection {
+  background: var(--claude-selection);
 }
 
-code, pre, .mono {
-  font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
-  font-size: 0.9em;
+/* Utility Classes for Fonts */
+.font-serif-claude {
+  font-family: 'Newsreader', serif;
 }
 
-/* Claude.ai style scrollbar */
+.font-sans-claude {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Scrollbar matching redesign */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: var(--claude-border);
-  border-radius: 3px;
+  background: #D1D5DB;
+  border-radius: 4px;
 }
-
-body.dark ::-webkit-scrollbar-thumb {
-  background: var(--claude-border-dark);
-}
-
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--claude-text-muted);
+  background: #9CA3AF;
 }
 
-/* Code block styling - Claude.ai exact style */
+/* Code block styling */
 .code-block {
-  background: #F8F8F8;
+  background: var(--claude-surface);
   border: 1px solid var(--claude-border);
-  border-radius: 6px;
+  border-radius: 12px;
   overflow: hidden;
-  margin: 12px 0;
-}
-
-body.dark .code-block {
-  background: #1E1E1E;
-  border-color: var(--claude-border-dark);
+  margin: 16px 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .code-block-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  background: #ECECEC;
+  padding: 8px 16px;
+  background: #F4F3EF; /* Slightly darker than surface */
   border-bottom: 1px solid var(--claude-border);
   font-size: 12px;
-  color: var(--claude-text-muted);
-}
-
-body.dark .code-block-header {
-  background: #2A2A2A;
-  border-color: var(--claude-border-dark);
-  color: var(--claude-text-muted-dark);
+  font-family: 'Inter', sans-serif;
+  color: var(--claude-text-secondary);
 }
 
 .code-block pre {
   padding: 16px;
   overflow-x: auto;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
-}
-
-.code-block code {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* Diff styling */
-.diff-add {
-  background: rgba(34, 197, 94, 0.1);
-  border-left: 3px solid #22c55e;
-  padding-left: 8px;
-}
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.diff-remove {
-  background: rgba(239, 68, 68, 0.1);
-  border-left: 3px solid #ef4444;
-  padding-left: 8px;
-}
-
-/* Claude.ai smooth animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { 
-    opacity: 0; 
-    transform: translateY(8px); 
-  }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
-  }
-}
-
-@keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
-}
-
-.fade-in {
-  animation: fadeIn 0.2s ease-out;
-}
-
-.slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-.shimmer {
-  background: linear-gradient(90deg, transparent, rgba(204, 120, 92, 0.1), transparent);
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite;
-}
-
-/* Typing indicator - Claude.ai exact style */
-.typing-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 0;
-}
-
-.typing-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--claude-text-muted);
-  border-radius: 50%;
-  animation: typingDot 1.4s infinite;
-}
-
-body.dark .typing-dot {
-  background: var(--claude-text-muted-dark);
-}
-
-.typing-dot:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-dot:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typingDot {
-  0%, 60%, 100% {
-    opacity: 0.3;
-    transform: scale(0.8);
-  }
-  30% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* Drag and drop overlay */
-.drag-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(204, 120, 92, 0.05);
-  border: 2px dashed var(--claude-orange);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  pointer-events: none;
-}
-
-body.dark .drag-overlay {
-  background: rgba(204, 120, 92, 0.1);
-}
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+.animate-slide-up { animation: slideUp 0.4s ease-out; }
