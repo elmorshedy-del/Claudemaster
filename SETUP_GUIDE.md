@@ -50,6 +50,22 @@ cd claude-coder
 npm install
 ```
 
+### 1.5 **(Optional) Connect to your GitHub repository**
+If you cloned this project locally without a remote, you can attach it to a GitHub repo so pushes and PRs work:
+
+```bash
+# Create a new empty repo on GitHub first, then set it as the origin
+git remote add origin https://github.com/<your-username>/<your-repo>.git
+
+# Verify the remote was added
+git remote -v
+
+# Push the existing branches (replace `main` with your default branch name if different)
+git push -u origin main
+```
+
+After adding the remote, the built-in GitHub integration can use your personal access token to create branches and PRs against that repository.
+
 ### 2. **Set Environment Variables**
 
 Create `.env.local` file:
