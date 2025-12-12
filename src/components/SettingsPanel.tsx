@@ -28,12 +28,10 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
   const [saved, setSaved] = useState(false);
   const [errors, setErrors] = useState<{ apiKey?: string; githubToken?: string }>({});
 
-  // Sync with parent settings
   useEffect(() => {
     setLocalSettings(settings);
   }, [settings]);
 
-  // Load API keys from localStorage
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
       const savedApiKey = localStorage.getItem('anthropic_api_key') || '';
@@ -61,17 +59,14 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
   const handleSave = () => {
     if (!validateInputs()) return;
 
-    // Save API keys to localStorage
     if (typeof window !== 'undefined') {
       if (apiKey) localStorage.setItem('anthropic_api_key', apiKey);
       if (githubToken) localStorage.setItem('github_token', githubToken);
       localStorage.setItem('app_settings', JSON.stringify(localSettings));
     }
 
-    // Update parent state
     onSave(localSettings);
 
-    // Show success feedback
     setSaved(true);
     setTimeout(() => {
       setSaved(false);
@@ -87,51 +82,45 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
 
   return (
     <>
-      {/* Overlay */}
       <div 
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 animate-fade-in" 
+        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50" 
         onClick={onClose} 
       />
 
-      {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-[var(--claude-surface)] dark:bg-[var(--claude-surface)] shadow-2xl z-50 overflow-hidden flex flex-col animate-slide-in-right">
-        {/* Header */}
-        <div className="flex-shrink-0 border-b border-[var(--claude-border)] dark:border-[var(--claude-border)]">
+      <div className="fixed inset-y-0 right-0 w-full max-w-xl bg-[var(--claude-surface)] shadow-2xl z-50 flex flex-col">
+        <div className="flex-shrink-0 border-b border-[var(--claude-border)]">
           <div className="flex items-center justify-between p-6">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--claude-terracotta)] to-[#E89B7D] flex items-center justify-center shadow-sm">
                 <Sparkles size={20} className="text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-[var(--claude-text)] dark:text-[var(--claude-text)]" style={{ fontFamily: "'Source Serif 4', Georgia, serif" }}>
+                <h2 className="text-xl font-semibold text-[var(--claude-text)]">
                   Settings
                 </h2>
-                <p className="text-sm text-[var(--claude-text-muted)] dark:text-[var(--claude-text-muted)]">Configure your coding assistant</p>
+                <p className="text-sm text-[var(--claude-text-muted)]">Configure your coding assistant</p>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="p-2.5 hover:bg-[var(--claude-sand-light)] dark:hover:bg-[var(--claude-sand-light)] rounded-xl transition-all duration-200 hover:scale-105"
+              className="p-2.5 hover:bg-[var(--claude-sand-light)] rounded-xl transition-all duration-200"
             >
               <X size={20} className="text-[var(--claude-text-muted)]" />
             </button>
           </div>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-8">
-          {/* API Configuration */}
           <section className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Key size={18} className="text-[var(--claude-terracotta)]" />
-              <h3 className="text-base font-semibold text-[var(--claude-text)] dark:text-[var(--claude-text)]">
+              <h3 className="text-base font-semibold text-[var(--claude-text)]">
                 API Configuration
               </h3>
             </div>
 
-            {/* Anthropic API Key */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[var(--claude-text-secondary)] dark:text-[var(--claude-text-secondary)]">
+              <label className="block text-sm font-medium text-[var(--claude-text-secondary)]">
                 Anthropic API Key
               </label>
               <div className="relative">
@@ -143,7 +132,7 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
                     setErrors(prev => ({ ...prev, apiKey: undefined }));
                   }}
                   placeholder="sk-ant-xxxxx..."
-                  className="input-claude pr-12"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-[var(--claude-border)] bg-[var(--claude-surface)] text-[var(--claude-text)] placeholder-[var(--claude-text-muted)] focus:outline-none focus:border-[var(--claude-terracotta)] focus:ring-2 focus:ring-[var(--claude-terracotta-subtle)]"
                 />
                 <button
                   type="button"
@@ -154,7 +143,7 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
                 </button>
               </div>
               {errors.apiKey && (
-                <div className="flex items-center gap-2 text-sm text-[var(--claude-error)]">
+                <div className="flex items-center gap-2 text-sm text-red-500">
                   <AlertCircle size={14} />
                   <span>{errors.apiKey}</span>
                 </div>
@@ -172,9 +161,8 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
               </p>
             </div>
 
-            {/* GitHub Token */}
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-[var(--claude-text-secondary)] dark:text-[var(--claude-text-secondary)]">
+              <label className="block text-sm font-medium text-[var(--claude-text-secondary)]">
                 GitHub Personal Access Token
               </label>
               <div className="relative">
@@ -186,7 +174,7 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
                     setErrors(prev => ({ ...prev, githubToken: undefined }));
                   }}
                   placeholder="ghp_xxxxx..."
-                  className="input-claude pr-12"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-[var(--claude-border)] bg-[var(--claude-surface)] text-[var(--claude-text)] placeholder-[var(--claude-text-muted)] focus:outline-none focus:border-[var(--claude-terracotta)] focus:ring-2 focus:ring-[var(--claude-terracotta-subtle)]"
                 />
                 <button
                   type="button"
@@ -197,7 +185,7 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
                 </button>
               </div>
               {errors.githubToken && (
-                <div className="flex items-center gap-2 text-sm text-[var(--claude-error)]">
+                <div className="flex items-center gap-2 text-sm text-red-500">
                   <AlertCircle size={14} />
                   <span>{errors.githubToken}</span>
                 </div>
@@ -216,14 +204,12 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
             </div>
           </section>
 
-          {/* Divider */}
           <div className="h-px bg-gradient-to-r from-transparent via-[var(--claude-border)] to-transparent" />
 
-          {/* Model Selection */}
           <section className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Cpu size={18} className="text-[var(--claude-terracotta)]" />
-              <h3 className="text-base font-semibold text-[var(--claude-text)] dark:text-[var(--claude-text)]">
+              <h3 className="text-base font-semibold text-[var(--claude-text)]">
                 Model Selection
               </h3>
             </div>
@@ -233,13 +219,11 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
                 <button
                   key={model.value}
                   onClick={() => handleSettingChange('model', model.value)}
-                  className={`
-                    w-full p-4 rounded-xl border text-left transition-all duration-200
-                    ${localSettings.model === model.value 
+                  className={`w-full p-4 rounded-xl border text-left transition-all duration-200 ${
+                    localSettings.model === model.value 
                       ? 'border-[var(--claude-terracotta)] bg-[var(--claude-terracotta-subtle)] shadow-sm' 
                       : 'border-[var(--claude-border)] hover:border-[var(--claude-border-strong)] hover:bg-[var(--claude-sand-light)]'
-                    }
-                  `}
+                  }`}
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -262,27 +246,23 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
             </div>
           </section>
 
-          {/* Divider */}
           <div className="h-px bg-gradient-to-r from-transparent via-[var(--claude-border)] to-transparent" />
 
-          {/* Deploy Mode */}
           <section className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Shield size={18} className="text-[var(--claude-terracotta)]" />
-              <h3 className="text-base font-semibold text-[var(--claude-text)] dark:text-[var(--claude-text)]">
+              <h3 className="text-base font-semibold text-[var(--claude-text)]">
                 Deploy Mode
               </h3>
             </div>
 
             <button
               onClick={() => handleSettingChange('deployMode', localSettings.deployMode === 'safe' ? 'direct' : 'safe')}
-              className={`
-                w-full p-4 rounded-xl border text-left transition-all duration-200
-                ${localSettings.deployMode === 'safe' 
-                  ? 'border-[var(--claude-success)] bg-[rgba(74,157,110,0.08)]' 
+              className={`w-full p-4 rounded-xl border text-left transition-all duration-200 ${
+                localSettings.deployMode === 'safe' 
+                  ? 'border-green-500 bg-green-50' 
                   : 'border-[var(--claude-border)] hover:border-[var(--claude-border-strong)] hover:bg-[var(--claude-sand-light)]'
-                }
-              `}
+              }`}
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
@@ -291,32 +271,27 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
                     Create changes in a new branch instead of directly on main
                   </div>
                 </div>
-                <div className={`
-                  w-12 h-7 rounded-full relative transition-colors duration-200
-                  ${localSettings.deployMode === 'safe' ? 'bg-[var(--claude-success)]' : 'bg-[var(--claude-sand)]'}
-                `}>
-                  <div className={`
-                    absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200
-                    ${localSettings.deployMode === 'safe' ? 'left-6' : 'left-1'}
-                  `} />
+                <div className={`w-12 h-7 rounded-full relative transition-colors duration-200 ${
+                  localSettings.deployMode === 'safe' ? 'bg-green-500' : 'bg-gray-300'
+                }`}>
+                  <div className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all duration-200 ${
+                    localSettings.deployMode === 'safe' ? 'left-6' : 'left-1'
+                  }`} />
                 </div>
               </div>
             </button>
           </section>
         </div>
 
-        {/* Footer with Save Button */}
-        <div className="flex-shrink-0 border-t border-[var(--claude-border)] p-6">
+        <div className="flex-shrink-0 border-t border-[var(--claude-border)] p-6 bg-[var(--claude-surface)]">
           <button
             onClick={handleSave}
             disabled={saved}
-            className={`
-              w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-medium transition-all duration-200
-              ${saved 
-                ? 'bg-[var(--claude-success)] text-white' 
-                : 'bg-[var(--claude-terracotta)] hover:bg-[var(--claude-terracotta-hover)] text-white shadow-sm hover:shadow-md hover:-translate-y-0.5'
-              }
-            `}
+            className={`w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-medium transition-all duration-200 ${
+              saved 
+                ? 'bg-green-500 text-white' 
+                : 'bg-[var(--claude-terracotta)] hover:bg-[var(--claude-terracotta-hover)] text-white shadow-sm hover:shadow-md'
+            }`}
           >
             {saved ? (
               <>
