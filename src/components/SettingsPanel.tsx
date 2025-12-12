@@ -1,6 +1,6 @@
 'use client';
 
-import { X, Save, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { X, Save, Eye, EyeOff, AlertCircle, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Settings } from '@/types';
 
