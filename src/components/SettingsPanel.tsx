@@ -55,11 +55,11 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
 
   return (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+        {/* Overlay */}
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center" />
 
-      {/* Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-claude-surface dark:bg-claude-surface-dark shadow-2xl z-50 overflow-y-auto">
+        {/* Panel */}
+        <div className="fixed inset-y-0 right-0 w-full max-w-2xl bg-claude-surface dark:bg-claude-surface-dark shadow-2xl z-50 overflow-y-auto">
         <div className="sticky top-0 bg-claude-surface dark:bg-claude-surface-dark border-b border-claude-border dark:border-claude-border-dark z-10">
           <div className="flex items-center justify-between p-6">
             <h2 className="text-2xl font-semibold text-claude-text dark:text-claude-text-dark">
