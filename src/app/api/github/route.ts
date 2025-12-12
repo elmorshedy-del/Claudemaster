@@ -26,8 +26,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('Received action:', body.action);
     const { action, ...params } = body;
     const { token, owner, repo } = resolveGitHubConfig(request, body);
+    console.log('Config:', { hasToken: !!token, owner, repo });
     const github = new GitHubClient(token, owner, repo);
 
     switch (action) {
@@ -107,6 +109,7 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error: any) {
+    console.error('Full error:', error);
     if (error instanceof GitHubConfigError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
