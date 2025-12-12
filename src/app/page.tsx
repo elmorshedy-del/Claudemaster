@@ -289,14 +289,21 @@ export default function Home() {
 
   const handleMergeBranch = async () => {
     if (!currentBranch) return;
-    
+
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const githubToken = typeof window !== 'undefined' ? localStorage.getItem('github_token') : null;
+
+      if (githubToken) {
+        headers['Authorization'] = `Bearer ${githubToken}`;
+      }
+
       await fetch('/api/github/merge', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ branch: currentBranch.name })
       });
-      
+
       setCurrentBranch(null);
     } catch (error) {
       console.error('Error merging branch:', error);
@@ -305,11 +312,18 @@ export default function Home() {
 
   const handleDiscardBranch = async () => {
     if (!currentBranch) return;
-    
+
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const githubToken = typeof window !== 'undefined' ? localStorage.getItem('github_token') : null;
+
+      if (githubToken) {
+        headers['Authorization'] = `Bearer ${githubToken}`;
+      }
+
       await fetch('/api/github/discard', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ branch: currentBranch.name })
       });
       

@@ -1,26 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GitHubClient } from '@/lib/github';
+import { GitHubConfigError, resolveGitHubConfig } from './helpers';
 
 // GET - List branches
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const token = request.headers.get('x-github-token') || process.env.GITHUB_TOKEN;
-    const owner = searchParams.get('owner');
-    const repo = searchParams.get('repo');
-
-    if (!token || !owner || !repo) {
-      return NextResponse.json(
-        { error: 'Missing required parameters or GitHub token not configured' },
-        { status: 400 }
-      );
-    }
-
+    const { token, owner, repo } = resolveGitHubConfig(request);
     const github = new GitHubClient(token, owner, repo);
     const branches = await github.listBranches();
 
     return NextResponse.json({ branches });
   } catch (error: any) {
+    if (error instanceof GitHubConfigError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
@@ -32,19 +26,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, owner, repo, ...params } = body;
-    const token = body.token || process.env.GITHUB_TOKEN;
-
-    if (!token || !owner || !repo) {
-      return NextResponse.json(
-        { error: 'Missing required parameters or GitHub token not configured' },
-        { status: 400 }
-      );
-    }
-
+    const { action, ...params } = body;
+    const { token, owner, repo } = resolveGitHubConfig(request, body);
     const github = new GitHubClient(token, owner, repo);
 
     switch (action) {
+      case 'connect': {
+        const context = await github.getAuthContext();
+        return NextResponse.json({ ok: true, ...context });
+      }
+
       case 'create': {
         const { branchName, fromBranch = 'main' } = params;
         if (!branchName) {
@@ -79,16 +70,21 @@ export async function POST(request: NextRequest) {
       }
 
       case 'merge': {
-        const { prNumber } = params;
-        if (!prNumber) {
+        const { prNumber, base = 'main', head } = params;
+        if (!prNumber && !head) {
           return NextResponse.json(
-            { error: 'PR number required' },
+            { error: 'PR number or head branch required' },
             { status: 400 }
           );
         }
 
-        await github.mergePullRequest(prNumber);
-        return NextResponse.json({ success: true });
+        if (prNumber) {
+          await github.mergePullRequest(prNumber);
+          return NextResponse.json({ success: true });
+        }
+
+        const mergeResult = await github.mergeBranch(base, head);
+        return NextResponse.json({ success: true, ...mergeResult });
       }
 
       case 'delete': {
@@ -111,6 +107,10 @@ export async function POST(request: NextRequest) {
         );
     }
   } catch (error: any) {
+    if (error instanceof GitHubConfigError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+
     return NextResponse.json(
       { error: error.message },
       { status: 500 }
