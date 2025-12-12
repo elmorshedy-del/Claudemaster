@@ -121,13 +121,26 @@ export default function Home() {
     setIsLoading(true);
 
     try {
+      const githubToken = typeof window !== 'undefined'
+        ? localStorage.getItem('github_token') || undefined
+        : undefined;
+      const repoOwner = typeof window !== 'undefined'
+        ? localStorage.getItem('github_repo_owner') || undefined
+        : undefined;
+      const repoName = typeof window !== 'undefined'
+        ? localStorage.getItem('github_repo_name') || undefined
+        : undefined;
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           messages: [...messages, userMessage],
           settings,
-          files: userMessage.files
+          files: userMessage.files,
+          githubToken,
+          repoOwner,
+          repoName
         })
       });
 

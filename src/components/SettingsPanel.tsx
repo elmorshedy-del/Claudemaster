@@ -23,6 +23,8 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
   const [localSettings, setLocalSettings] = useState<Settings>(settings);
   const [apiKey, setApiKey] = useState('');
   const [githubToken, setGithubToken] = useState('');
+  const [repoOwner, setRepoOwner] = useState('');
+  const [repoName, setRepoName] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [showGithubToken, setShowGithubToken] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -38,8 +40,12 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
     if (isOpen && typeof window !== 'undefined') {
       const savedApiKey = localStorage.getItem('anthropic_api_key') || '';
       const savedGithubToken = localStorage.getItem('github_token') || '';
+      const savedRepoOwner = localStorage.getItem('github_repo_owner') || '';
+      const savedRepoName = localStorage.getItem('github_repo_name') || '';
       setApiKey(savedApiKey);
       setGithubToken(savedGithubToken);
+      setRepoOwner(savedRepoOwner);
+      setRepoName(savedRepoName);
     }
   }, [isOpen]);
 
@@ -65,6 +71,8 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
     if (typeof window !== 'undefined') {
       if (apiKey) localStorage.setItem('anthropic_api_key', apiKey);
       if (githubToken) localStorage.setItem('github_token', githubToken);
+      if (repoOwner) localStorage.setItem('github_repo_owner', repoOwner);
+      if (repoName) localStorage.setItem('github_repo_name', repoName);
       localStorage.setItem('app_settings', JSON.stringify(localSettings));
     }
 
@@ -204,15 +212,43 @@ export default function SettingsPanel({ isOpen, onClose, settings, onSave }: Set
               )}
               <p className="text-xs text-[var(--claude-text-muted)]">
                 Create a token with repo access at{' '}
-                <a 
-                  href="https://github.com/settings/tokens/new" 
-                  target="_blank" 
+                <a
+                  href="https://github.com/settings/tokens/new"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="text-[var(--claude-terracotta)] hover:underline"
                 >
                   github.com/settings/tokens
                 </a>
               </p>
+
+              {/* Repo owner */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[var(--claude-text-secondary)] dark:text-[var(--claude-text-secondary)]">
+                  Repository Owner
+                </label>
+                <input
+                  type="text"
+                  value={repoOwner}
+                  onChange={(e) => setRepoOwner(e.target.value)}
+                  placeholder="your-github-username-or-org"
+                  className="input-claude"
+                />
+              </div>
+
+              {/* Repo name */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-[var(--claude-text-secondary)] dark:text-[var(--claude-text-secondary)]">
+                  Repository Name
+                </label>
+                <input
+                  type="text"
+                  value={repoName}
+                  onChange={(e) => setRepoName(e.target.value)}
+                  placeholder="repo-name"
+                  className="input-claude"
+                />
+              </div>
             </div>
           </section>
 
