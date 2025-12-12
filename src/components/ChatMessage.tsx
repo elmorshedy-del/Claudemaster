@@ -18,12 +18,10 @@ export default function ChatMessage({ message }: ChatMessageProps) {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  // Parse markdown-style code blocks
   const renderContent = (content: string) => {
     const parts = content.split(/(```[\s\S]*?```)/g);
     
     return parts.map((part, index) => {
-      // Code block
       if (part.startsWith('```')) {
         const match = part.match(/```(\w+)?\n?([\s\S]*?)```/);
         if (match) {
@@ -33,7 +31,6 @@ export default function ChatMessage({ message }: ChatMessageProps) {
           
           return (
             <div key={index} className="my-4 rounded-xl overflow-hidden border border-[var(--claude-border)] bg-[var(--claude-surface-sunken)]">
-              {/* Code header */}
               <div className="flex items-center justify-between px-4 py-2.5 bg-[var(--claude-sand-light)] border-b border-[var(--claude-border)]">
                 <span className="text-xs font-medium text-[var(--claude-text-muted)] uppercase tracking-wide">
                   {language}
@@ -44,8 +41,8 @@ export default function ChatMessage({ message }: ChatMessageProps) {
                 >
                   {copiedCode === codeId ? (
                     <>
-                      <Check size={14} className="text-[var(--claude-success)]" />
-                      <span className="text-[var(--claude-success)]">Copied</span>
+                      <Check size={14} className="text-green-500" />
+                      <span className="text-green-500">Copied</span>
                     </>
                   ) : (
                     <>
@@ -55,8 +52,6 @@ export default function ChatMessage({ message }: ChatMessageProps) {
                   )}
                 </button>
               </div>
-              
-              {/* Code content */}
               <div className="p-4 overflow-x-auto">
                 <pre className="text-sm leading-relaxed">
                   <code className="font-mono text-[var(--claude-text)]">{code}</code>
@@ -67,7 +62,6 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         }
       }
       
-      // Inline code
       const inlineCodeParts = part.split(/(`[^`]+`)/g);
       return (
         <span key={index}>
@@ -82,7 +76,6 @@ export default function ChatMessage({ message }: ChatMessageProps) {
                 </code>
               );
             }
-            // Regular text - preserve line breaks
             return inlinePart.split('\n').map((line, lineIndex, arr) => (
               <span key={`${i}-${lineIndex}`}>
                 {line}
@@ -96,27 +89,22 @@ export default function ChatMessage({ message }: ChatMessageProps) {
   };
 
   return (
-    <div 
-      className={`py-6 animate-fade-in-up ${isUser ? 'bg-transparent' : 'bg-[var(--claude-surface-sunken)]/50'}`}
-    >
+    <div className={`py-6 ${isUser ? 'bg-transparent' : 'bg-[var(--claude-surface-sunken)]/50'}`}>
       <div className="max-w-3xl mx-auto px-6">
         <div className="flex gap-4">
-          {/* Avatar */}
           <div className="flex-shrink-0">
             {isUser ? (
               <div className="w-8 h-8 rounded-full bg-[var(--claude-sand)] flex items-center justify-center">
                 <User size={16} className="text-[var(--claude-text-secondary)]" />
               </div>
             ) : (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--claude-terracotta)] to-[#E89B7D] flex items-center justify-center shadow-sm shadow-[var(--claude-terracotta)]/20">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[var(--claude-terracotta)] to-[#E89B7D] flex items-center justify-center shadow-sm">
                 <Sparkles size={16} className="text-white" />
               </div>
             )}
           </div>
           
-          {/* Content */}
           <div className="flex-1 min-w-0">
-            {/* Role label */}
             <div className="flex items-center gap-2 mb-2">
               <span className="text-sm font-medium text-[var(--claude-text)]">
                 {isUser ? 'You' : 'Claude'}
@@ -128,14 +116,13 @@ export default function ChatMessage({ message }: ChatMessageProps) {
               )}
               {message.isStreaming && (
                 <div className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--claude-terracotta)] typing-dot" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--claude-terracotta)] typing-dot" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--claude-terracotta)] typing-dot" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--claude-terracotta)] animate-pulse" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--claude-terracotta)] animate-pulse" style={{animationDelay: '0.2s'}} />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--claude-terracotta)] animate-pulse" style={{animationDelay: '0.4s'}} />
                 </div>
               )}
             </div>
             
-            {/* Files attached (for user messages) */}
             {message.files && message.files.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {message.files.map((file) => (
@@ -156,17 +143,13 @@ export default function ChatMessage({ message }: ChatMessageProps) {
               </div>
             )}
             
-            {/* Message content */}
             <div className="prose text-[var(--claude-text)] leading-relaxed">
               {renderContent(message.content)}
             </div>
             
-            {/* Cost info (for assistant messages) */}
             {!isUser && message.cost !== undefined && message.cost > 0 && (
               <div className="mt-4 pt-3 border-t border-[var(--claude-border)] flex items-center gap-4 text-xs text-[var(--claude-text-muted)]">
-                <span>
-                  Cost: ${message.cost.toFixed(4)}
-                </span>
+                <span>Cost: ${message.cost.toFixed(4)}</span>
                 {message.tokensUsed && (
                   <span>
                     Tokens: {message.tokensUsed.input.toLocaleString()} in / {message.tokensUsed.output.toLocaleString()} out
