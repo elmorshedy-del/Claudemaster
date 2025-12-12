@@ -35,49 +35,26 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
   };
 
   try {
-    // Determine default branch first to avoid missing non-main setups
-    let defaultBranch: string | undefined;
-    try {
-      const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
-      if (repoResponse.ok) {
-        const repoData = await repoResponse.json();
-        defaultBranch = repoData.default_branch;
-      }
-    } catch (e) {
-      console.warn('Could not fetch repo metadata, falling back to main/master');
-    }
-
-    // Try the default branch first, then fall back to common names
-    const branchCandidates = Array.from(new Set([
-      defaultBranch,
-      'main',
-      'master'
-    ].filter(Boolean))) as string[];
-
-    let treeData: any | null = null;
-    let branchUsed: string | undefined;
-
-    for (const branch of branchCandidates) {
-      const treeResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+    // Get repository tree
+    let treeResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`,
+      { headers }
+    );
+    
+    if (!treeResponse.ok) {
+      treeResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/master?recursive=1`,
         { headers }
       );
-
-      if (treeResponse.ok) {
-        treeData = await treeResponse.json();
-        branchUsed = branch;
-        break;
-      }
+      if (!treeResponse.ok) return '';
     }
-
-    if (!treeData || !treeData.tree) {
-      return '';
-    }
-
+    
+    const treeData = await treeResponse.json();
+    
     // Filter for code files
     const codeExtensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.json', '.md'];
     const excludePaths = ['node_modules', 'dist', '.next', '.git', 'package-lock.json'];
-
+    
     const codeFiles = treeData.tree?.filter((item: any) => {
       if (item.type !== 'blob') return false;
       if (excludePaths.some(p => item.path.includes(p))) return false;
@@ -86,9 +63,9 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
 
     // Get priority files (src, components, app, config)
     const priorityFiles = codeFiles
-      .filter((f: any) =>
-        f.path.includes('src/') ||
-        f.path.includes('app/') ||
+      .filter((f: any) => 
+        f.path.includes('src/') || 
+        f.path.includes('app/') || 
         f.path.includes('components/') ||
         f.path === 'package.json' ||
         f.path.endsWith('.config.ts') ||
@@ -96,7 +73,7 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
       )
       .slice(0, 20);
 
-    let context = `\n## Repository: ${owner}/${repo}${branchUsed ? ` (branch: ${branchUsed})` : ''}\n\n### File Structure:\n`;
+    let context = `\n## Repository: ${owner}/${repo}\n\n### File Structure:\n`;
     context += codeFiles.map((f: any) => `- ${f.path}`).join('\n');
     context += '\n\n### File Contents:\n';
 
@@ -104,10 +81,10 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
     for (const file of priorityFiles) {
       try {
         const contentResponse = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}${branchUsed ? `?ref=${branchUsed}` : ''}`,
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`,
           { headers }
         );
-
+        
         if (contentResponse.ok) {
           const contentData = await contentResponse.json();
           if (contentData.content) {
@@ -133,13 +110,12 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
 async function pushChangesToGitHub(
   files: Array<{ path: string; content: string }>,
   deployMode: 'safe' | 'direct',
-  userMessage: string,
-  options: { token?: string; owner?: string; repo?: string; railwayProjectId?: string } = {}
+  userMessage: string
 ): Promise<{ success: boolean; branch?: any; error?: string }> {
-  const githubToken = options.token || process.env.GITHUB_TOKEN;
-  const owner = options.owner || process.env.GITHUB_REPO_OWNER;
-  const repo = options.repo || process.env.GITHUB_REPO_NAME;
-  const railwayProjectId = options.railwayProjectId || process.env.RAILWAY_PROJECT_ID;
+  const githubToken = process.env.GITHUB_TOKEN;
+  const owner = process.env.GITHUB_REPO_OWNER;
+  const repo = process.env.GITHUB_REPO_NAME;
+  const railwayProjectId = process.env.RAILWAY_PROJECT_ID;
 
   if (!githubToken || !owner || !repo) {
     return { success: false, error: 'GitHub not configured' };
@@ -256,14 +232,7 @@ export async function POST(req: NextRequest) {
   
   try {
     const body = await req.json();
-    const {
-      messages,
-      settings = {},
-      files,
-      githubToken: providedGithubToken,
-      repoOwner: providedRepoOwner,
-      repoName: providedRepoName,
-    } = body;
+    const { messages, settings = {}, files, repo } = body;
     
     // ============ Validate messages (fixes 400 error) ============
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -274,9 +243,11 @@ export async function POST(req: NextRequest) {
     }
     
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    const githubToken = providedGithubToken || process.env.GITHUB_TOKEN;
-    const repoOwner = providedRepoOwner || process.env.GITHUB_REPO_OWNER;
-    const repoName = providedRepoName || process.env.GITHUB_REPO_NAME;
+    
+    // Use repo from request, or fall back to env vars
+    const githubToken = repo?.token || process.env.GITHUB_TOKEN;
+    const repoOwner = repo?.owner || process.env.GITHUB_REPO_OWNER;
+    const repoName = repo?.name || process.env.GITHUB_REPO_NAME;
     
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), { 
@@ -424,17 +395,11 @@ The file path MUST be included after the language, separated by a colon.
             
             if (parsed.fileChanges.length > 0) {
               console.log(`Found ${parsed.fileChanges.length} file changes to push`);
-
+              
               const pushResult = await pushChangesToGitHub(
                 parsed.fileChanges.map(f => ({ path: f.path, content: f.content })),
                 settings.deployMode || 'safe',
-                lastUserMessage,
-                {
-                  token: githubToken,
-                  owner: repoOwner,
-                  repo: repoName,
-                  railwayProjectId: process.env.RAILWAY_PROJECT_ID
-                }
+                lastUserMessage
               );
               
               if (pushResult.success && pushResult.branch) {
