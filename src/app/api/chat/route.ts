@@ -35,26 +35,49 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
   };
 
   try {
-    // Get repository tree
-    let treeResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`,
-      { headers }
-    );
-    
-    if (!treeResponse.ok) {
-      treeResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/master?recursive=1`,
+    // Determine default branch first to avoid missing non-main setups
+    let defaultBranch: string | undefined;
+    try {
+      const repoResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers });
+      if (repoResponse.ok) {
+        const repoData = await repoResponse.json();
+        defaultBranch = repoData.default_branch;
+      }
+    } catch (e) {
+      console.warn('Could not fetch repo metadata, falling back to main/master');
+    }
+
+    // Try the default branch first, then fall back to common names
+    const branchCandidates = Array.from(new Set([
+      defaultBranch,
+      'main',
+      'master'
+    ].filter(Boolean))) as string[];
+
+    let treeData: any | null = null;
+    let branchUsed: string | undefined;
+
+    for (const branch of branchCandidates) {
+      const treeResponse = await fetch(
+        `https://api.github.com/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
         { headers }
       );
-      if (!treeResponse.ok) return '';
+
+      if (treeResponse.ok) {
+        treeData = await treeResponse.json();
+        branchUsed = branch;
+        break;
+      }
     }
-    
-    const treeData = await treeResponse.json();
-    
+
+    if (!treeData || !treeData.tree) {
+      return '';
+    }
+
     // Filter for code files
     const codeExtensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.json', '.md'];
     const excludePaths = ['node_modules', 'dist', '.next', '.git', 'package-lock.json'];
-    
+
     const codeFiles = treeData.tree?.filter((item: any) => {
       if (item.type !== 'blob') return false;
       if (excludePaths.some(p => item.path.includes(p))) return false;
@@ -63,9 +86,9 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
 
     // Get priority files (src, components, app, config)
     const priorityFiles = codeFiles
-      .filter((f: any) => 
-        f.path.includes('src/') || 
-        f.path.includes('app/') || 
+      .filter((f: any) =>
+        f.path.includes('src/') ||
+        f.path.includes('app/') ||
         f.path.includes('components/') ||
         f.path === 'package.json' ||
         f.path.endsWith('.config.ts') ||
@@ -73,7 +96,7 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
       )
       .slice(0, 20);
 
-    let context = `\n## Repository: ${owner}/${repo}\n\n### File Structure:\n`;
+    let context = `\n## Repository: ${owner}/${repo}${branchUsed ? ` (branch: ${branchUsed})` : ''}\n\n### File Structure:\n`;
     context += codeFiles.map((f: any) => `- ${f.path}`).join('\n');
     context += '\n\n### File Contents:\n';
 
@@ -81,10 +104,10 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
     for (const file of priorityFiles) {
       try {
         const contentResponse = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`,
+          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}${branchUsed ? `?ref=${branchUsed}` : ''}`,
           { headers }
         );
-        
+
         if (contentResponse.ok) {
           const contentData = await contentResponse.json();
           if (contentData.content) {
