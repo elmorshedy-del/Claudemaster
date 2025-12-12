@@ -110,12 +110,13 @@ async function fetchRepoContext(token: string, owner: string, repo: string): Pro
 async function pushChangesToGitHub(
   files: Array<{ path: string; content: string }>,
   deployMode: 'safe' | 'direct',
-  userMessage: string
+  userMessage: string,
+  options: { token?: string; owner?: string; repo?: string; railwayProjectId?: string } = {}
 ): Promise<{ success: boolean; branch?: any; error?: string }> {
-  const githubToken = process.env.GITHUB_TOKEN;
-  const owner = process.env.GITHUB_REPO_OWNER;
-  const repo = process.env.GITHUB_REPO_NAME;
-  const railwayProjectId = process.env.RAILWAY_PROJECT_ID;
+  const githubToken = options.token || process.env.GITHUB_TOKEN;
+  const owner = options.owner || process.env.GITHUB_REPO_OWNER;
+  const repo = options.repo || process.env.GITHUB_REPO_NAME;
+  const railwayProjectId = options.railwayProjectId || process.env.RAILWAY_PROJECT_ID;
 
   if (!githubToken || !owner || !repo) {
     return { success: false, error: 'GitHub not configured' };
@@ -232,7 +233,14 @@ export async function POST(req: NextRequest) {
   
   try {
     const body = await req.json();
-    const { messages, settings = {}, files } = body;
+    const {
+      messages,
+      settings = {},
+      files,
+      githubToken: providedGithubToken,
+      repoOwner: providedRepoOwner,
+      repoName: providedRepoName,
+    } = body;
     
     // ============ Validate messages (fixes 400 error) ============
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -243,9 +251,9 @@ export async function POST(req: NextRequest) {
     }
     
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    const githubToken = process.env.GITHUB_TOKEN;
-    const repoOwner = process.env.GITHUB_REPO_OWNER;
-    const repoName = process.env.GITHUB_REPO_NAME;
+    const githubToken = providedGithubToken || process.env.GITHUB_TOKEN;
+    const repoOwner = providedRepoOwner || process.env.GITHUB_REPO_OWNER;
+    const repoName = providedRepoName || process.env.GITHUB_REPO_NAME;
     
     if (!apiKey) {
       return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), { 
@@ -393,11 +401,17 @@ The file path MUST be included after the language, separated by a colon.
             
             if (parsed.fileChanges.length > 0) {
               console.log(`Found ${parsed.fileChanges.length} file changes to push`);
-              
+
               const pushResult = await pushChangesToGitHub(
                 parsed.fileChanges.map(f => ({ path: f.path, content: f.content })),
                 settings.deployMode || 'safe',
-                lastUserMessage
+                lastUserMessage,
+                {
+                  token: githubToken,
+                  owner: repoOwner,
+                  repo: repoName,
+                  railwayProjectId: process.env.RAILWAY_PROJECT_ID
+                }
               );
               
               if (pushResult.success && pushResult.branch) {
