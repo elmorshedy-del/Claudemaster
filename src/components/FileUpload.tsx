@@ -20,18 +20,23 @@ export default function FileUpload({ onFilesSelected, files, onRemoveFile }: Fil
 
     for (let i = 0; i < fileList.length; i++) {
       const file = fileList[i];
-      
+
       if (file.size > MAX_FILE_SIZE) {
         alert(`File ${file.name} is too large. Maximum size is 50MB.`);
         continue;
       }
 
-      // Convert to base64 for images and PDFs
       const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
+      const fileData = await new Promise<{ base64?: string; content?: string }>((resolve) => {
         reader.onload = (e) => {
-          resolve(e.target?.result as string);
+          const result = e.target?.result as string;
+          if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+            resolve({ base64: result });
+          } else {
+            resolve({ content: result });
+          }
         };
+
         if (file.type.startsWith('image/') || file.type === 'application/pdf') {
           reader.readAsDataURL(file);
         } else {
@@ -39,15 +44,14 @@ export default function FileUpload({ onFilesSelected, files, onRemoveFile }: Fil
         }
       });
 
-      const content = await base64Promise;
-
       newFiles.push({
         id: `${Date.now()}-${i}`,
         name: file.name,
         type: file.type,
         size: file.size,
         url: URL.createObjectURL(file),
-        base64: content
+        base64: fileData.base64,
+        content: fileData.content,
       });
     }
 

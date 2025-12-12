@@ -27,6 +27,7 @@ export interface UploadedFile {
   size: number;
   url: string;
   base64?: string;
+  content?: string;
 }
 
 export interface FileChange {

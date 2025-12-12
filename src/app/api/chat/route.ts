@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       // Add files if present
       if (msg.files && msg.files.length > 0) {
         msg.files.forEach((file: any) => {
-          if (file.type.startsWith('image/')) {
+          if (file.type.startsWith('image/') && file.base64) {
             content.push({
               type: 'image',
               source: {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
                 data: file.base64.split(',')[1]
               }
             });
-          } else if (file.type === 'application/pdf') {
+          } else if (file.type === 'application/pdf' && file.base64) {
             content.push({
               type: 'document',
               source: {
@@ -64,6 +64,11 @@ export async function POST(req: NextRequest) {
                 media_type: 'application/pdf',
                 data: file.base64.split(',')[1]
               }
+            });
+          } else if (file.content) {
+            content.push({
+              type: 'text',
+              text: `File: ${file.name}\n${file.content}`
             });
           }
         });
