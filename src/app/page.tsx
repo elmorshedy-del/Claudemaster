@@ -374,7 +374,7 @@ export default function Home() {
           onClose={() => setShowSidebar(false)}
           onNewChat={newChat}
           conversations={conversations}
-          currentConversationId={currentConversationId}
+          currentConversationId={currentConversationId ?? undefined}
           onSelectConversation={handleSelectConversation}
           onDeleteConversation={handleDeleteConversation}
         />
