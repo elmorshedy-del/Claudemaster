@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
                 budget_tokens: 10000
               }
             })
-          });
+          }) as any;
 
           let fullText = '';
           let thinkingText = '';
