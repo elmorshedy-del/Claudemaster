@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   try {
     const { messages, settings, files } = await req.json();
     
-    // Get API key from localStorage (sent from client) or environment
+    // Get API key from environment
     const apiKey = process.env.ANTHROPIC_API_KEY;
     
     if (!apiKey) {
