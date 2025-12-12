@@ -75,10 +75,18 @@ export default function Home() {
     }
     if (savedCostTracking) setCostTracking(JSON.parse(savedCostTracking));
     if (savedRepos) {
-      const parsed = JSON.parse(savedRepos);
-      setRepos(parsed);
-      const active = parsed.find((r: Repository) => r.isActive);
-      if (active) setActiveRepo(active);
+      const parsed: Repository[] = JSON.parse(savedRepos);
+      const active = parsed.find((r: Repository) => r.isActive) || parsed[0];
+      const normalized = parsed.map(repo => ({
+        ...repo,
+        isActive: active ? repo.id === active.id : false
+      }));
+
+      setRepos(normalized);
+      if (active) {
+        const activeRepo = normalized.find(r => r.id === active.id) || null;
+        setActiveRepo(activeRepo);
+      }
     }
     
     // Apply dark mode
@@ -116,39 +124,47 @@ export default function Home() {
 
   // Save repos
   useEffect(() => {
-    if (repos.length > 0) {
-      localStorage.setItem('github_repos', JSON.stringify(repos));
-    }
+    localStorage.setItem('github_repos', JSON.stringify(repos));
   }, [repos]);
 
   // Repo handlers
   const handleSelectRepo = (repo: Repository) => {
     setRepos(prev => prev.map(r => ({ ...r, isActive: r.id === repo.id })));
-    setActiveRepo(repo);
+    setActiveRepo({ ...repo, isActive: true });
   };
 
   const handleAddRepo = (repoData: Omit<Repository, 'id' | 'isActive'>) => {
-    const newRepo: Repository = {
-      ...repoData,
-      id: Date.now().toString(),
-      isActive: repos.length === 0 // First repo is active by default
-    };
-    setRepos(prev => [...prev, newRepo]);
-    if (repos.length === 0) {
-      setActiveRepo(newRepo);
-    }
+    setRepos(prev => {
+      const newRepo: Repository = {
+        ...repoData,
+        id: Date.now().toString(),
+        isActive: prev.length === 0 // First repo is active by default
+      };
+      const updated = [...prev, newRepo];
+
+      if (newRepo.isActive) {
+        setActiveRepo(newRepo);
+        return updated.map(r => ({ ...r, isActive: r.id === newRepo.id }));
+      }
+
+      return updated;
+    });
   };
 
   const handleDeleteRepo = (id: string) => {
-    setRepos(prev => prev.filter(r => r.id !== id));
-    if (activeRepo?.id === id) {
-      const remaining = repos.filter(r => r.id !== id);
-      if (remaining.length > 0) {
-        handleSelectRepo(remaining[0]);
-      } else {
-        setActiveRepo(null);
+    setRepos(prev => {
+      const updated = prev.filter(r => r.id !== id);
+      const currentActive = prev.find(r => r.isActive) || null;
+      let nextActive: Repository | null = currentActive;
+
+      if (currentActive?.id === id) {
+        nextActive = updated.length > 0 ? { ...updated[0], isActive: true } : null;
       }
-    }
+
+      setActiveRepo(nextActive || null);
+
+      return updated.map(r => ({ ...r, isActive: nextActive ? r.id === nextActive.id : false }));
+    });
   };
 
   const handleSend = async () => {
