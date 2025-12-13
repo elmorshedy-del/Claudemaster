@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { parseCodeBlocks, generateBranchName } from '@/lib/codeParser';
+import { GitHubClient } from '@/lib/github';
 
 const PRICE_PER_MILLION_INPUT: Record<string, number> = {
   'haiku-4.5': 1,
@@ -28,80 +29,74 @@ const MODEL_MAP: Record<string, string> = {
 
 // Fetch repository files for context
 async function fetchRepoContext(token: string, owner: string, repo: string): Promise<string> {
-  const headers = {
-    'Authorization': `Bearer ${token}`,
-    'Accept': 'application/vnd.github.v3+json',
-    'User-Agent': 'Claude-Coder'
-  };
-
   try {
-    // Get repository tree
-    let treeResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`,
-      { headers }
-    );
+    const client = new GitHubClient(token, owner, repo);
     
-    if (!treeResponse.ok) {
-      treeResponse = await fetch(
-        `https://api.github.com/repos/${owner}/${repo}/git/trees/master?recursive=1`,
-        { headers }
-      );
-      if (!treeResponse.ok) return '';
-    }
+    // Get list of branches to find the default one
+    const branches = await client.listBranches();
+    const defaultBranch = branches.find(b => b.isDefault)?.name || 'main';
     
-    const treeData = await treeResponse.json();
+    console.log(`Using default branch: ${defaultBranch}`);
+    
+    // Get file tree
+    const tree = await client.getFileTree(defaultBranch);
+    
+    // Flatten tree to get all file paths
+    const flattenTree = (nodes: any[], result: string[] = []): string[] => {
+      for (const node of nodes) {
+        if (node.type === 'file') {
+          result.push(node.path);
+        }
+        if (node.children) {
+          flattenTree(node.children, result);
+        }
+      }
+      return result;
+    };
+    
+    const allFiles = flattenTree(tree);
     
     // Filter for code files
     const codeExtensions = ['.ts', '.tsx', '.js', '.jsx', '.css', '.json', '.md'];
-    const excludePaths = ['node_modules', 'dist', '.next', '.git', 'package-lock.json'];
+    const excludePaths = ['node_modules', 'dist', '.next', '.git', 'package-lock.json', '.yarn'];
     
-    const codeFiles = treeData.tree?.filter((item: any) => {
-      if (item.type !== 'blob') return false;
-      if (excludePaths.some(p => item.path.includes(p))) return false;
-      return codeExtensions.some(ext => item.path.endsWith(ext));
-    }) || [];
+    const codeFiles = allFiles.filter(path => {
+      if (excludePaths.some(p => path.includes(p))) return false;
+      return codeExtensions.some(ext => path.endsWith(ext));
+    });
 
     // Get priority files (src, components, app, config)
-    const priorityFiles = codeFiles
-      .filter((f: any) => 
-        f.path.includes('src/') || 
-        f.path.includes('app/') || 
-        f.path.includes('components/') ||
-        f.path === 'package.json' ||
-        f.path.endsWith('.config.ts') ||
-        f.path.endsWith('.config.js')
+    const priorityPaths = codeFiles
+      .filter(path => 
+        path.includes('src/') || 
+        path.includes('app/') || 
+        path.includes('components/') ||
+        path === 'package.json' ||
+        path.endsWith('.config.ts') ||
+        path.endsWith('.config.js')
       )
       .slice(0, 20);
 
+    // Build context string
     let context = `\n## Repository: ${owner}/${repo}\n\n### File Structure:\n`;
-    context += codeFiles.map((f: any) => `- ${f.path}`).join('\n');
+    context += codeFiles.map(f => `- ${f}`).join('\n');
     context += '\n\n### File Contents:\n';
 
     // Fetch content of priority files
-    for (const file of priorityFiles) {
-      try {
-        const contentResponse = await fetch(
-          `https://api.github.com/repos/${owner}/${repo}/contents/${file.path}`,
-          { headers }
-        );
-        
-        if (contentResponse.ok) {
-          const contentData = await contentResponse.json();
-          if (contentData.content) {
-            const decoded = Buffer.from(contentData.content, 'base64').toString('utf-8');
-            const truncated = decoded.length > 3000 ? decoded.slice(0, 3000) + '\n...(truncated)' : decoded;
-            const ext = file.path.split('.').pop() || '';
-            context += `\n#### ${file.path}\n\`\`\`${ext}\n${truncated}\n\`\`\`\n`;
-          }
-        }
-      } catch (e) {
-        // Skip files that can't be fetched
-      }
+    const files = await client.getFiles(priorityPaths, defaultBranch);
+    
+    for (const file of files) {
+      const truncated = file.content.length > 3000 
+        ? file.content.slice(0, 3000) + '\n...(truncated)' 
+        : file.content;
+      const ext = file.path.split('.').pop() || '';
+      context += `\n#### ${file.path}\n\`\`\`${ext}\n${truncated}\n\`\`\`\n`;
     }
 
+    console.log(`Loaded ${files.length} files from ${owner}/${repo}`);
     return context;
-  } catch (error) {
-    console.error('Error fetching repo context:', error);
+  } catch (error: any) {
+    console.error('Error fetching repo context:', error.message);
     return '';
   }
 }
