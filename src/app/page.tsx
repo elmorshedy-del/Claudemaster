@@ -118,37 +118,60 @@ export default function Home() {
   useEffect(() => {
     if (repos.length > 0) {
       localStorage.setItem('github_repos', JSON.stringify(repos));
+    } else {
+      localStorage.removeItem('github_repos');
     }
   }, [repos]);
 
   // Repo handlers
   const handleSelectRepo = (repo: Repository) => {
-    setRepos(prev => prev.map(r => ({ ...r, isActive: r.id === repo.id })));
-    setActiveRepo(repo);
+    setRepos(prev => {
+      const updated = prev.map(r => ({ ...r, isActive: r.id === repo.id }));
+      setActiveRepo(repo);
+      return updated;
+    });
   };
 
   const handleAddRepo = (repoData: Omit<Repository, 'id' | 'isActive'>) => {
-    const newRepo: Repository = {
-      ...repoData,
-      id: Date.now().toString(),
-      isActive: repos.length === 0 // First repo is active by default
-    };
-    setRepos(prev => [...prev, newRepo]);
-    if (repos.length === 0) {
-      setActiveRepo(newRepo);
-    }
+    setRepos(prev => {
+      const hasActive = prev.some(r => r.isActive);
+      const newRepo: Repository = {
+        ...repoData,
+        id: Date.now().toString(),
+        isActive: !hasActive && prev.length === 0
+      };
+
+      const nextActive = hasActive
+        ? prev.find(r => r.isActive) || null
+        : newRepo;
+
+      const updated = [...prev, newRepo].map(r => ({
+        ...r,
+        isActive: nextActive ? r.id === nextActive.id : false
+      }));
+
+      setActiveRepo(nextActive);
+      return updated;
+    });
   };
 
   const handleDeleteRepo = (id: string) => {
-    setRepos(prev => prev.filter(r => r.id !== id));
-    if (activeRepo?.id === id) {
-      const remaining = repos.filter(r => r.id !== id);
-      if (remaining.length > 0) {
-        handleSelectRepo(remaining[0]);
-      } else {
-        setActiveRepo(null);
-      }
-    }
+    setRepos(prev => {
+      const updated = prev.filter(r => r.id !== id);
+      const currentActive = prev.find(r => r.isActive) || null;
+
+      let nextActive: Repository | null = currentActive && updated.some(r => r.id === currentActive.id)
+        ? currentActive
+        : updated[0] || null;
+
+      const normalized = updated.map(r => ({
+        ...r,
+        isActive: nextActive ? r.id === nextActive.id : false
+      }));
+
+      setActiveRepo(nextActive);
+      return normalized;
+    });
   };
 
   const handleSend = async () => {
