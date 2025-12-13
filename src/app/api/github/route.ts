@@ -37,13 +37,29 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'listRepos': {
+        type RepoSource = {
+          id: number;
+          name: string;
+          full_name: string;
+          owner?: { login?: string | null };
+          private: boolean;
+        };
+
         const { data: userRepos } = await octokit.rest.repos.listForAuthenticatedUser({
           per_page: 100,
           sort: 'pushed',
         });
 
         const org = searchParams.get('org');
-        let orgRepos: typeof userRepos = [];
+        const userRepoSummaries = userRepos.map(r => ({
+          id: r.id,
+          name: r.name,
+          fullName: r.full_name,
+          owner: r.owner?.login,
+          private: r.private,
+        }));
+
+        let orgRepos: RepoSource[] = [];
 
         if (org) {
           const { data } = await octokit.rest.repos.listForOrg({
@@ -54,13 +70,15 @@ export async function GET(request: NextRequest) {
           orgRepos = data;
         }
 
-        const repos = [...userRepos, ...orgRepos].map(r => ({
+        const orgRepoSummaries = orgRepos.map(r => ({
           id: r.id,
           name: r.name,
           fullName: r.full_name,
           owner: r.owner?.login,
           private: r.private,
         }));
+
+        const repos = [...userRepoSummaries, ...orgRepoSummaries];
 
         return NextResponse.json({ repos });
       }
@@ -87,6 +105,10 @@ export async function GET(request: NextRequest) {
       }
 
       case 'branches': {
+        if (!owner || !repo) {
+          return NextResponse.json({ error: 'Owner and repo are required' }, { status: 400 });
+        }
+
         const { data: branches } = await octokit.rest.repos.listBranches({
           owner,
           repo,
@@ -105,6 +127,10 @@ export async function GET(request: NextRequest) {
       }
 
       case 'tree': {
+        if (!owner || !repo) {
+          return NextResponse.json({ error: 'Owner and repo are required' }, { status: 400 });
+        }
+
         const branch = searchParams.get('branch') || 'main';
         const { data: branchData } = await octokit.rest.repos.getBranch({
           owner,
@@ -121,6 +147,10 @@ export async function GET(request: NextRequest) {
       }
 
       case 'file': {
+        if (!owner || !repo) {
+          return NextResponse.json({ error: 'Owner and repo are required' }, { status: 400 });
+        }
+
         const path = searchParams.get('path');
         const branch = searchParams.get('branch') || 'main';
         if (!path) {
