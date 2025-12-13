@@ -6,7 +6,7 @@ function getOctokit(token: string) {
   return new Octokit({ auth: token });
 }
 
-// GET - List branches or get file content
+// GET - List branches, repositories, or get file content
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -15,16 +15,77 @@ export async function GET(request: NextRequest) {
     const repo = searchParams.get('repo');
     const action = searchParams.get('action') || 'branches';
 
-    if (!token || !owner || !repo) {
+    if (!token) {
       return NextResponse.json(
-        { error: 'Missing required parameters: token, owner, repo' },
+        { error: 'Missing required parameter: token' },
         { status: 400 }
       );
+    }
+
+    // Actions that require a specific repository
+    if (!owner || !repo) {
+      const repoRequiredActions = ['branches', 'tree', 'file', 'validateRepo'];
+      if (repoRequiredActions.includes(action)) {
+        return NextResponse.json(
+          { error: 'Missing required parameters: token, owner, repo' },
+          { status: 400 }
+        );
+      }
     }
 
     const octokit = getOctokit(token);
 
     switch (action) {
+      case 'listRepos': {
+        const { data: userRepos } = await octokit.rest.repos.listForAuthenticatedUser({
+          per_page: 100,
+          sort: 'pushed',
+        });
+
+        const org = searchParams.get('org');
+        let orgRepos: typeof userRepos = [];
+
+        if (org) {
+          const { data } = await octokit.rest.repos.listForOrg({
+            org,
+            per_page: 100,
+            sort: 'pushed',
+          });
+          orgRepos = data;
+        }
+
+        const repos = [...userRepos, ...orgRepos].map(r => ({
+          id: r.id,
+          name: r.name,
+          fullName: r.full_name,
+          owner: r.owner?.login,
+          private: r.private,
+        }));
+
+        return NextResponse.json({ repos });
+      }
+
+      case 'validateRepo': {
+        if (!owner || !repo) {
+          return NextResponse.json({ error: 'Owner and repo are required' }, { status: 400 });
+        }
+
+        const { data: repoData } = await octokit.rest.repos.get({
+          owner,
+          repo,
+        });
+
+        return NextResponse.json({
+          repository: {
+            id: repoData.id,
+            name: repoData.name,
+            fullName: repoData.full_name,
+            owner: repoData.owner?.login,
+            private: repoData.private,
+          },
+        });
+      }
+
       case 'branches': {
         const { data: branches } = await octokit.rest.repos.listBranches({
           owner,
