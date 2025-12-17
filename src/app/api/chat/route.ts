@@ -222,6 +222,58 @@ async function pushChangesToGitHub(
   }
 }
 
+async function createPullRequestAfterPush(
+  branchName: string,
+  filesChanged: number,
+  userMessage: string
+): Promise<{ prUrl?: string; prNumber?: number; error?: string }> {
+  const githubToken = process.env.GITHUB_TOKEN;
+  const owner = process.env.GITHUB_REPO_OWNER;
+  const repo = process.env.GITHUB_REPO_NAME;
+
+  if (!githubToken || !owner || !repo) {
+    return { error: 'GitHub not configured' };
+  }
+
+  const baseUrl = process.env.VERCEL_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000';
+  const apiBase = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`;
+
+  const title = `Claude Coder: ${userMessage.slice(0, 70)}...`;
+  const body = `This PR was automatically created after pushing ${filesChanged} file${
+    filesChanged === 1 ? '' : 's'
+  } from Claude Coder.`;
+
+  try {
+    const prRes = await fetch(`${apiBase}/api/github`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'createPR',
+        token: githubToken,
+        owner,
+        repo,
+        title,
+        body,
+        head: branchName,
+        base: 'main'
+      })
+    });
+
+    if (!prRes.ok) {
+      const err = await prRes.json();
+      return { error: err.error || 'Failed to create pull request' };
+    }
+
+    const prData = await prRes.json();
+    return {
+      prUrl: prData.pr?.url,
+      prNumber: prData.pr?.number
+    };
+  } catch (error: any) {
+    return { error: error.message };
+  }
+}
+
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   
@@ -400,25 +452,49 @@ The file path MUST be included after the language, separated by a colon.
               if (pushResult.success && pushResult.branch) {
                 // Send branch info to frontend
                 controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'branch', 
-                    branch: pushResult.branch 
+                  encoder.encode(`data: ${JSON.stringify({
+                    type: 'branch',
+                    branch: pushResult.branch
                   })}\n\n`)
                 );
-                
+
                 // Also send a message about what was pushed
                 const pushMessage = settings.deployMode === 'safe'
                   ? `\n\n---\n✅ **Changes pushed to branch \`${pushResult.branch.name}\`** (${pushResult.branch.filesChanged} files)${pushResult.branch.previewUrl ? `\n🔗 Preview: ${pushResult.branch.previewUrl}` : ''}`
                   : `\n\n---\n✅ **Changes pushed directly to \`main\`** (${pushResult.branch.filesChanged} files)`;
-                
+
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'content', delta: pushMessage })}\n\n`)
                 );
+
+                if (settings.deployMode === 'safe') {
+                  const prResult = await createPullRequestAfterPush(
+                    pushResult.branch.name,
+                    pushResult.branch.filesChanged,
+                    lastUserMessage
+                  );
+
+                  if (prResult.prUrl && prResult.prNumber) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({
+                        type: 'content',
+                        delta: `\n\n---\n📬 **Pull request created:** [#${prResult.prNumber}](${prResult.prUrl})`
+                      })}\n\n`)
+                    );
+                  } else if (prResult.error) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({
+                        type: 'content',
+                        delta: `\n\n---\n⚠️ **Could not create pull request:** ${prResult.error}`
+                      })}\n\n`)
+                    );
+                  }
+                }
               } else if (pushResult.error) {
                 controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'content', 
-                    delta: `\n\n---\n⚠️ **Could not push changes:** ${pushResult.error}` 
+                  encoder.encode(`data: ${JSON.stringify({
+                    type: 'content',
+                    delta: `\n\n---\n⚠️ **Could not push changes:** ${pushResult.error}`
                   })}\n\n`)
                 );
               }
