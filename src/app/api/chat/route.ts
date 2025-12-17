@@ -222,6 +222,56 @@ async function pushChangesToGitHub(
   }
 }
 
+async function createPullRequest(
+  title: string,
+  branchName: string,
+  userMessage: string
+): Promise<{ success: boolean; prUrl?: string; prNumber?: number; error?: string }> {
+  const githubToken = process.env.GITHUB_TOKEN;
+  const owner = process.env.GITHUB_REPO_OWNER;
+  const repo = process.env.GITHUB_REPO_NAME;
+
+  if (!githubToken || !owner || !repo) {
+    return { success: false, error: 'GitHub not configured' };
+  }
+
+  const baseUrl = process.env.VERCEL_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:3000';
+  const apiBase = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`;
+
+  try {
+    const response = await fetch(`${apiBase}/api/github`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'createPullRequest',
+        token: githubToken,
+        owner,
+        repo,
+        title,
+        head: branchName,
+        base: 'main',
+        body: `This pull request was automatically created by Claude Coder.\n\n${userMessage}`,
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      return { success: false, error: err.error || 'Failed to create pull request' };
+    }
+
+    const data = await response.json();
+
+    return {
+      success: true,
+      prUrl: data.pullRequest?.url,
+      prNumber: data.pullRequest?.number,
+    };
+  } catch (error: any) {
+    console.error('Create PR error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   
@@ -400,24 +450,54 @@ The file path MUST be included after the language, separated by a colon.
               if (pushResult.success && pushResult.branch) {
                 // Send branch info to frontend
                 controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'branch', 
-                    branch: pushResult.branch 
+                  encoder.encode(`data: ${JSON.stringify({
+                    type: 'branch',
+                    branch: pushResult.branch
                   })}\n\n`)
                 );
-                
+
                 // Also send a message about what was pushed
                 const pushMessage = settings.deployMode === 'safe'
                   ? `\n\n---\n✅ **Changes pushed to branch \`${pushResult.branch.name}\`** (${pushResult.branch.filesChanged} files)${pushResult.branch.previewUrl ? `\n🔗 Preview: ${pushResult.branch.previewUrl}` : ''}`
                   : `\n\n---\n✅ **Changes pushed directly to \`main\`** (${pushResult.branch.filesChanged} files)`;
-                
+
                 controller.enqueue(
                   encoder.encode(`data: ${JSON.stringify({ type: 'content', delta: pushMessage })}\n\n`)
                 );
+
+                // Optionally create a pull request when using safe mode
+                if (settings.deployMode === 'safe') {
+                  const hasRepoContext = Boolean(repoOwner && repoName && githubToken);
+                  const prTitle = `Claude Coder: ${lastUserMessage.slice(0, 60) || 'Automated changes'}`;
+                  const prResult = await createPullRequest(prTitle, pushResult.branch.name, lastUserMessage);
+
+                  if (prResult.success && prResult.prUrl) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({
+                        type: 'content',
+                        delta: `\n\n---\n✅ **Pull request opened:** [${prResult.prUrl}](${prResult.prUrl})`
+                      })}\n\n`)
+                    );
+                  } else if (!hasRepoContext && settings.showErrors) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({
+                        type: 'content',
+                        delta: `\n\n---\nℹ️ **Pull request not created:** GitHub repository is not fully configured.`
+                      })}\n\n`)
+                    );
+                  } else if (prResult.error) {
+                    controller.enqueue(
+                      encoder.encode(`data: ${JSON.stringify({
+                        type: 'content',
+                        delta: `\n\n---\n⚠️ **Could not create pull request:** ${prResult.error}`
+                      })}\n\n`)
+                    );
+                  }
+                }
               } else if (pushResult.error) {
                 controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ 
-                    type: 'content', 
+                  encoder.encode(`data: ${JSON.stringify({
+                    type: 'content',
                     delta: `\n\n---\n⚠️ **Could not push changes:** ${pushResult.error}` 
                   })}\n\n`)
                 );

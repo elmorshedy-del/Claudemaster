@@ -240,6 +240,35 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      case 'createPullRequest': {
+        const { title, head, base = 'main', body = '' } = params;
+
+        if (!title || !head) {
+          return NextResponse.json(
+            { error: 'Pull request title and head branch are required' },
+            { status: 400 }
+          );
+        }
+
+        const { data } = await octokit.rest.pulls.create({
+          owner: repoOwner,
+          repo: repoName,
+          title,
+          head,
+          base,
+          body,
+        });
+
+        return NextResponse.json({
+          success: true,
+          pullRequest: {
+            url: data.html_url,
+            number: data.number,
+            state: data.state,
+          },
+        });
+      }
+
       // Commit multiple files to a branch
       case 'commit': {
         const { branch, files, message } = params;
